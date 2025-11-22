@@ -1,9 +1,9 @@
-use feed_rs::parser;
-use feed_rs::model::Feed;
+use anyhow::Result;
 use chrono::{DateTime, Utc};
-use anyhow::{Context, Result};
+use feed_rs::model::Feed;
+use feed_rs::parser;
 use reqwest::Client;
-use tracing::{error, warn, info, debug};
+use tracing::{error, info, warn};
 
 #[derive(Debug, Clone)]
 pub struct Article {
@@ -39,7 +39,7 @@ pub async fn fetch_feeds(urls: &[String]) -> (Vec<Feed>, Vec<(String, String)>) 
                         Ok(feed) => {
                             info!("Successfully fetched and parsed feed: {}", url);
                             feeds.push(feed);
-                        },
+                        }
                         Err(e) => {
                             let msg = format!("Failed to parse RSS feed: {}", e);
                             warn!("{} - {}", msg, url);
@@ -52,7 +52,7 @@ pub async fn fetch_feeds(urls: &[String]) -> (Vec<Feed>, Vec<(String, String)>) 
                         errors.push((url.clone(), msg));
                     }
                 }
-            },
+            }
             Err(e) => {
                 let msg = format!("Failed to fetch URL: {}", e);
                 warn!("{} - {}", msg, url);
@@ -64,7 +64,11 @@ pub async fn fetch_feeds(urls: &[String]) -> (Vec<Feed>, Vec<(String, String)>) 
     (feeds, errors)
 }
 
-pub async fn filter_items(feeds: Vec<Feed>, errors: Vec<(String, String)>, since: DateTime<Utc>) -> Vec<Article> {
+pub async fn filter_items(
+    feeds: Vec<Feed>,
+    errors: Vec<(String, String)>,
+    since: DateTime<Utc>,
+) -> Vec<Article> {
     let mut articles = Vec::new();
     let client = Client::new();
     let mut join_set = tokio::task::JoinSet::new();
@@ -81,24 +85,33 @@ pub async fn filter_items(feeds: Vec<Feed>, errors: Vec<(String, String)>, since
     }
 
     for feed in feeds {
-        let source_title = feed.title.map(|t| t.content).unwrap_or("Unknown Source".to_string());
+        let source_title = feed
+            .title
+            .map(|t| t.content)
+            .unwrap_or("Unknown Source".to_string());
         for entry in feed.entries {
             if let Some(pub_date) = entry.published.or(entry.updated) {
                 if pub_date >= since {
-                    let title = entry.title.as_ref().map(|t| t.content.clone()).unwrap_or("No Title".to_string());
+                    let title = entry
+                        .title
+                        .as_ref()
+                        .map(|t| t.content.clone())
+                        .unwrap_or("No Title".to_string());
                     // Find the first link, preferring alternate (HTML) links
-                    let link = entry.links.iter()
+                    let link = entry
+                        .links
+                        .iter()
                         .find(|l| l.rel.as_deref() == Some("alternate") || l.rel.is_none())
                         .map(|l| l.href.clone())
                         .unwrap_or_default();
-                    
+
                     let client = client.clone();
                     let source_title = source_title.clone();
                     let entry = entry.clone();
 
                     join_set.spawn(async move {
                         info!("Processing article: {}", title);
-                        
+
                         // Fetch full content if link is present
                         let content = if !link.is_empty() {
                             match fetch_full_content(&client, &link).await {
@@ -130,7 +143,7 @@ pub async fn filter_items(feeds: Vec<Feed>, errors: Vec<(String, String)>, since
             }
         }
     }
-    
+
     while let Some(res) = join_set.join_next().await {
         match res {
             Ok(article) => articles.push(article),
@@ -147,8 +160,8 @@ pub async fn filter_items(feeds: Vec<Feed>, errors: Vec<(String, String)>, since
 async fn fetch_full_content(client: &Client, url: &str) -> Result<String> {
     let html = client.get(url).send().await?.text().await?;
     let mut readability = dom_smoothie::Readability::new(html, Some(url), None)?;
-    let extracted = readability.parse().map_err(|e| anyhow::anyhow!("DomSmoothie error: {:?}", e))?;
+    let extracted = readability
+        .parse()
+        .map_err(|e| anyhow::anyhow!("DomSmoothie error: {:?}", e))?;
     Ok(extracted.content.to_string())
 }
-
-
