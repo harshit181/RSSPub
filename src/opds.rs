@@ -1,6 +1,5 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use std::path::Path;
 use tokio::fs;
 
 pub async fn generate_opds_feed(base_url: &str, dir_path: &str) -> Result<String> {
@@ -29,14 +28,16 @@ pub async fn generate_opds_feed(base_url: &str, dir_path: &str) -> Result<String
         Utc::now().to_rfc3339()
     };
 
-    let mut xml = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/" xmlns:opds="http://opds-spec.org/2010/catalog">
   <id>urn:uuid:rpub-feed</id>
   <title>RPub RSS Digest</title>
   <author>
     <name>RPub</name>
   </author>
-"#);
+"#,
+    );
 
     xml.push_str(&format!("  <updated>{}</updated>\n", updated));
     xml.push_str(&format!("  <link rel=\"self\" href=\"{}/opds\" type=\"application/atom+xml;profile=opds-catalog;kind=navigation\"/>\n", base_url));
@@ -45,12 +46,18 @@ pub async fn generate_opds_feed(base_url: &str, dir_path: &str) -> Result<String
     for (filename, modified) in entries {
         let date_str = modified.format("%Y-%m-%d").to_string();
         let download_url = format!("{}/epubs/{}", base_url, filename);
-        
+
         xml.push_str("  <entry>\n");
         xml.push_str(&format!("    <title>RSS Digest - {}</title>\n", date_str));
         xml.push_str(&format!("    <id>urn:rpub:epub:{}</id>\n", filename));
-        xml.push_str(&format!("    <updated>{}</updated>\n", modified.to_rfc3339()));
-        xml.push_str(&format!("    <content type=\"text\">RSS Digest for {}</content>\n", date_str));
+        xml.push_str(&format!(
+            "    <updated>{}</updated>\n",
+            modified.to_rfc3339()
+        ));
+        xml.push_str(&format!(
+            "    <content type=\"text\">RSS Digest for {}</content>\n",
+            date_str
+        ));
         xml.push_str(&format!("    <link rel=\"http://opds-spec.org/acquisition\" href=\"{}\" type=\"application/epub+zip\" />\n", download_url));
         xml.push_str("  </entry>\n");
     }

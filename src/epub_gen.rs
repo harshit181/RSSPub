@@ -16,7 +16,7 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
 
     // Set metadata
     builder
-        .metadata("author", "RPub RSS Aggregator")
+        .metadata("author", "RPub RSS Book")
         .map_err(|e| anyhow::anyhow!("{}", e))?;
     builder
         .metadata(
@@ -184,23 +184,6 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
         .map_err(|e| anyhow::anyhow!("Failed to generate EPUB: {}", e))?;
 
     Ok(buffer)
-}
-
-pub async fn generate_epub(articles: &[Article], output_dir: &str) -> Result<()> {
-    let data = generate_epub_data(articles).await?;
-
-    // Ensure output directory exists
-    fs::create_dir_all(output_dir).context("Failed to create output directory")?;
-
-    // Generate filename
-    let filename = format!("rss_digest_{}.epub", Utc::now().format("%Y%m%d_%H%M%S"));
-    let output_path = Path::new(output_dir).join(filename);
-
-    fs::write(&output_path, data).context("Failed to write output file")?;
-
-    info!("Generated EPUB at: {:?}", output_path);
-
-    Ok(())
 }
 
 fn clean_html(html: &str) -> String {

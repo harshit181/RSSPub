@@ -1,11 +1,11 @@
-use crate::{feed, epub_gen, db};
+use crate::{epub_gen, feed};
 use anyhow::Result;
-use chrono::{Utc, Duration as ChronoDuration};
+use chrono::{Duration as ChronoDuration, Utc};
 use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
-pub async fn generate_epub(feeds: Vec<String>, db: &Arc<Mutex<Connection>>) -> Result<Vec<u8>> {
+pub async fn generate_epub(feeds: Vec<String>, _db: &Arc<Mutex<Connection>>) -> Result<Vec<u8>> {
     info!("Fetching {} feeds...", feeds.len());
 
     // 1. Fetch Feeds
@@ -19,21 +19,25 @@ pub async fn generate_epub(feeds: Vec<String>, db: &Arc<Mutex<Connection>>) -> R
         return Err(anyhow::anyhow!("No articles found in the last 24 hours."));
     }
 
-
     // 4. Generate EPUB Data
-    let epub_data = epub_gen::generate_epub_data(&articles).await
+    let epub_data = epub_gen::generate_epub_data(&articles)
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to generate EPUB: {}", e))?;
 
     Ok(epub_data)
 }
 
-pub async fn generate_and_save(feeds: Vec<String>, db: &Arc<Mutex<Connection>>, output_dir: &str) -> Result<String> {
+pub async fn generate_and_save(
+    feeds: Vec<String>,
+    db: &Arc<Mutex<Connection>>,
+    output_dir: &str,
+) -> Result<String> {
     let epub_data = generate_epub(feeds, db).await?;
 
     let filename = format!("rss_digest_{}.epub", Utc::now().format("%Y%m%d_%H%M%S"));
     let filepath = format!("{}/{}", output_dir, filename);
-    
+
     tokio::fs::write(&filepath, &epub_data).await?;
-    
+
     Ok(filename)
 }
