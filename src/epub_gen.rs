@@ -72,12 +72,13 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
 
             // Wrap in XHTML skeleton
             let content_html = format!(
-                "<h1>{}</h1><p><strong>Source:</strong> {} <br /> <strong>Date:</strong> {}</p><hr />{}<p><a href=\"{}\">Read original article</a></p>",
+                "<h1>{}</h1><p><strong>Source:</strong> {} <br /> <strong>Date:</strong> {}</p><hr />{}<p><a href=\"{}\">Read original article</a></p><p><a href=\"{}\">Back to Feed TOC</a></p>",
                 escape_xml(&article.title),
                 escape_xml(&article.source),
                 article.pub_date.format("%Y-%m-%d %H:%M"),
                 fixed_content,
-                escape_xml(&article.link)
+                escape_xml(&article.link),
+                format!("toc_{}.xhtml", article.source.replace(|c: char| !c.is_alphanumeric(), "_").to_lowercase())
             );
             let final_content = wrap_xhtml(&article.title, &content_html);
 
@@ -110,6 +111,23 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
             format!("RSS Digest - {}", Utc::now().format("%Y-%m-%d")),
         )
         .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    // Add cover image
+    let cover_path = "static/cover.png";
+    if std::path::Path::new(cover_path).exists() {
+        match std::fs::read(cover_path) {
+            Ok(cover_data) => {
+                builder
+                    .add_cover_image("cover.png", cover_data.as_slice(), "image/png")
+                    .map_err(|e| anyhow::anyhow!("Failed to add cover image: {}", e))?;
+            }
+            Err(e) => {
+                info!("Failed to read cover image: {}", e);
+            }
+        }
+    } else {
+        info!("Cover image not found at {}", cover_path);
+    }
 
     builder
         .add_content(
@@ -187,8 +205,9 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
     builder
         .generate(&mut buffer)
         .map_err(|e| anyhow::anyhow!("Failed to generate EPUB: {}", e))?;
-
+    info!("EPUB generated successfully");
     Ok(buffer)
+    
 }
 
 fn clean_html(html: &str) -> String {

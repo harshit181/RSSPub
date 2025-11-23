@@ -1,5 +1,7 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use dom_smoothie::Config;
+use dom_smoothie::TextMode;
 use feed_rs::model::Feed;
 use feed_rs::parser;
 use reqwest::Client;
@@ -159,7 +161,11 @@ pub async fn filter_items(
 
 async fn fetch_full_content(client: &Client, url: &str) -> Result<String> {
     let html = client.get(url).send().await?.text().await?;
-    let mut readability = dom_smoothie::Readability::new(html, Some(url), None)?;
+    let cfg = Config {
+        text_mode: TextMode::Markdown,
+        ..Default::default()
+    };
+    let mut readability = dom_smoothie::Readability::new(html, Some(url), Some(cfg))?;
     let extracted = readability
         .parse()
         .map_err(|e| anyhow::anyhow!("DomSmoothie error: {:?}", e))?;
