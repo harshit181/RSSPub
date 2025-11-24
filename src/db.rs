@@ -10,6 +10,7 @@ pub fn init_db(path: &str) -> Result<Connection> {
             id INTEGER PRIMARY KEY,
             url TEXT NOT NULL UNIQUE,
             name TEXT,
+            concurrency_limit INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL
         )",
         [],
@@ -33,6 +34,8 @@ pub struct Feed {
     pub id: Option<i64>,
     pub url: String,
     pub name: Option<String>,
+    #[serde(default)]
+    pub concurrency_limit: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -43,21 +46,22 @@ pub struct Schedule {
 }
 
 // Feed Operations
-pub fn add_feed(conn: &Connection, url: &str, name: Option<&str>) -> Result<()> {
+pub fn add_feed(conn: &Connection, url: &str, name: Option<&str>, concurrency_limit: usize) -> Result<()> {
     conn.execute(
-        "INSERT OR IGNORE INTO feeds (url, name, created_at) VALUES (?1, ?2, ?3)",
-        params![url, name, Utc::now().to_rfc3339()],
+        "INSERT OR IGNORE INTO feeds (url, name, concurrency_limit, created_at) VALUES (?1, ?2, ?3, ?4)",
+        params![url, name, concurrency_limit, Utc::now().to_rfc3339()],
     )?;
     Ok(())
 }
 
 pub fn get_feeds(conn: &Connection) -> Result<Vec<Feed>> {
-    let mut stmt = conn.prepare("SELECT id, url, name FROM feeds")?;
+    let mut stmt = conn.prepare("SELECT id, url, name, concurrency_limit FROM feeds")?;
     let feed_iter = stmt.query_map([], |row| {
         Ok(Feed {
             id: Some(row.get(0)?),
             url: row.get(1)?,
             name: row.get(2)?,
+            concurrency_limit: row.get(3)?,
         })
     })?;
 

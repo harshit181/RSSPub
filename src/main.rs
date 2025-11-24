@@ -5,7 +5,7 @@ mod image;
 mod opds;
 mod processor;
 mod scheduler;
-
+use crate::db::Feed;
 use axum::{
     extract::{Json, Path, State},
     http::{header, HeaderMap, StatusCode},
@@ -26,7 +26,7 @@ struct AppState {
 #[derive(Deserialize)]
 struct GenerateRequest {
     #[serde(default)]
-    feeds: Vec<String>,
+    feeds: Vec<Feed>,
 }
 
 #[tokio::main]
@@ -145,6 +145,8 @@ async fn list_feeds(
 struct AddFeedRequest {
     url: String,
     name: Option<String>,
+    #[serde(default)]
+    concurrency_limit: usize,
 }
 
 async fn add_feed(
@@ -157,8 +159,13 @@ async fn add_feed(
             "DB lock failed".to_string(),
         )
     })?;
-    db::add_feed(&db, &payload.url, payload.name.as_deref())
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    db::add_feed(
+        &db,
+        &payload.url,
+        payload.name.as_deref(),
+        payload.concurrency_limit,
+    )
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::CREATED)
 }
 
@@ -242,9 +249,6 @@ async fn generate_handler(
         let stored_feeds =
             db::get_feeds(&db).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
         stored_feeds
-            .into_iter()
-            .map(|f| f.url)
-            .collect::<Vec<String>>()
     } else {
         payload.feeds
     };

@@ -1,15 +1,15 @@
-use tokio_cron_scheduler::{Job, JobScheduler};
-use std::time::Duration;
-use std::path::Path;
-use anyhow::Result;
-use std::sync::{Arc, Mutex};
-use rusqlite::Connection;
 use crate::{db, processor};
-use tracing::{info, error};
+use anyhow::Result;
+use rusqlite::Connection;
+use std::path::Path;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tokio_cron_scheduler::{Job, JobScheduler};
+use tracing::{error, info};
 
 pub async fn init_scheduler(db_conn: Arc<Mutex<Connection>>) -> Result<JobScheduler> {
     let sched = JobScheduler::new().await?;
-    
+
     // 1. Cleanup Job: Runs every hour
     let cleanup_job = Job::new_async("0 0 * * * *", |_uuid, _l| {
         Box::pin(async {
@@ -23,7 +23,9 @@ pub async fn init_scheduler(db_conn: Arc<Mutex<Connection>>) -> Result<JobSchedu
 
     // 2. Load Schedules from DB
     let schedules = {
-        let conn = db_conn.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
+        let conn = db_conn
+            .lock()
+            .map_err(|_| anyhow::anyhow!("DB lock failed"))?;
         db::get_schedules(&conn)?
     };
 
@@ -31,7 +33,7 @@ pub async fn init_scheduler(db_conn: Arc<Mutex<Connection>>) -> Result<JobSchedu
         if schedule.active {
             let db_clone = db_conn.clone();
             info!("Adding schedule: {}", schedule.cron_expression);
-            
+
             // Create a job for this schedule
             // Note: We need to handle potential errors in cron parsing
             match Job::new_async(schedule.cron_expression.as_str(), move |_uuid, _l| {
@@ -43,8 +45,13 @@ pub async fn init_scheduler(db_conn: Arc<Mutex<Connection>>) -> Result<JobSchedu
                     }
                 })
             }) {
-                Ok(job) => { sched.add(job).await?; },
-                Err(e) => error!("Failed to create job for schedule {}: {}", schedule.cron_expression, e),
+                Ok(job) => {
+                    sched.add(job).await?;
+                }
+                Err(e) => error!(
+                    "Failed to create job for schedule {}: {}",
+                    schedule.cron_expression, e
+                ),
             }
         }
     }
@@ -54,11 +61,10 @@ pub async fn init_scheduler(db_conn: Arc<Mutex<Connection>>) -> Result<JobSchedu
 }
 
 async fn run_scheduled_generation(db: Arc<Mutex<Connection>>) -> Result<()> {
-    // Fetch all feeds
     let feeds = {
         let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
         let stored_feeds = db::get_feeds(&conn)?;
-        stored_feeds.into_iter().map(|f| f.url).collect::<Vec<String>>()
+        stored_feeds
     };
 
     if feeds.is_empty() {
@@ -77,7 +83,7 @@ async fn cleanup_old_files() -> Result<()> {
     if !Path::new(output_dir).exists() {
         return Ok(());
     }
-    
+
     let mut entries = tokio::fs::read_dir(output_dir).await?;
     while let Some(entry) = entries.next_entry().await? {
         let metadata = entry.metadata().await?;

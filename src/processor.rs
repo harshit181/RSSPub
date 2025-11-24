@@ -1,3 +1,4 @@
+use crate::db::Feed;
 use crate::{epub_gen, feed};
 use anyhow::Result;
 use chrono::{Duration as ChronoDuration, Utc};
@@ -5,13 +6,10 @@ use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
-pub async fn generate_epub(feeds: Vec<String>, _db: &Arc<Mutex<Connection>>) -> Result<Vec<u8>> {
+pub async fn generate_epub(feeds: Vec<Feed>, _db: &Arc<Mutex<Connection>>) -> Result<Vec<u8>> {
     info!("Fetching {} feeds...", feeds.len());
 
-    // 1. Fetch Feeds
     let (fetched_feeds, errors) = feed::fetch_feeds(&feeds).await;
-
-    // 2. Filter Articles (Last 24 hours)
     let since = Utc::now() - ChronoDuration::hours(24);
     let articles = feed::filter_items(fetched_feeds, errors, since).await;
 
@@ -28,7 +26,7 @@ pub async fn generate_epub(feeds: Vec<String>, _db: &Arc<Mutex<Connection>>) -> 
 }
 
 pub async fn generate_and_save(
-    feeds: Vec<String>,
+    feeds: Vec<Feed>,
     db: &Arc<Mutex<Connection>>,
     output_dir: &str,
 ) -> Result<String> {

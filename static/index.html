@@ -23,6 +23,8 @@
                 <form id="add-feed-form">
                     <input type="url" name="url" placeholder="Feed URL" required>
                     <input type="text" name="name" placeholder="Name (Optional)">
+                    <input type="number" name="concurrency_limit" placeholder="Limit (0=Unl)" min="0"
+                        style="width: 100px;">
                     <button type="submit">Add Feed</button>
                 </form>
             </section>
@@ -76,7 +78,7 @@
             const list = document.getElementById('feeds-list');
             list.innerHTML = feeds.map(f => `
                 <li>
-                    <span>${f.name || f.url}</span>
+                    <span>${f.name || f.url} <small>(${f.concurrency_limit === 0 ? 'Unlimited' : f.concurrency_limit + ' threads'})</small></span>
                     <button onclick="deleteFeed(${f.id})" class="delete-btn">×</button>
                 </li>
             `).join('');
@@ -87,7 +89,8 @@
             const formData = new FormData(e.target);
             await api('/feeds', 'POST', {
                 url: formData.get('url'),
-                name: formData.get('name') || null
+                name: formData.get('name') || null,
+                concurrency_limit: parseInt(formData.get('concurrency_limit') || '0', 10)
             });
             e.target.reset();
             loadFeeds();
