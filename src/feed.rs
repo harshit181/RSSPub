@@ -88,7 +88,11 @@ pub async fn filter_items(
     since: DateTime<Utc>,
 ) -> Vec<Article> {
     let mut articles = Vec::new();
-    let client = Client::new();
+    let client = Client::builder()
+        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .cookie_store(true)
+        .build()
+        .unwrap_or_else(|_| Client::new());
     let mut join_set = tokio::task::JoinSet::new();
 
     // Handle Feed Errors
