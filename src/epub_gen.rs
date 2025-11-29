@@ -5,10 +5,11 @@ use anyhow::Result;
 use chrono::Utc;
 use epub_builder::{EpubBuilder, EpubContent, EpubVersion, ReferenceType, ZipLibrary};
 use regex::Regex;
+use std::io::{Seek, SeekFrom, Write};
 use tokio::task::JoinSet;
 use tracing::info;
 
-pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
+pub async fn generate_epub_data<W: Write + Seek>(articles: &[Article], output: W) -> Result<()> {
     // Group articles by source
     use std::collections::HashMap;
     let mut articles_by_source: HashMap<String, Vec<&Article>> = HashMap::new();
@@ -181,9 +182,10 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
                 processed_articles_map.remove(&index)
             {
                 // Add images to EPUB
-                for (img_filename, img_data, mime_type) in images {
+                for (img_filename, mut temp_file, mime_type) in images {
+                    temp_file.seek(SeekFrom::Start(0))?;
                     builder
-                        .add_resource(img_filename, img_data.as_slice(), mime_type)
+                        .add_resource(img_filename, temp_file, mime_type)
                         .map_err(|e| anyhow::anyhow!("Failed to add image resource: {}", e))?;
                 }
 
@@ -199,12 +201,11 @@ pub async fn generate_epub_data(articles: &[Article]) -> Result<Vec<u8>> {
         }
     }
 
-    let mut buffer = Vec::new();
     builder
-        .generate(&mut buffer)
+        .generate(output)
         .map_err(|e| anyhow::anyhow!("Failed to generate EPUB: {}", e))?;
     info!("EPUB generated successfully");
-    Ok(buffer)
+    Ok(())
 }
 
 fn clean_html(html: &str) -> String {

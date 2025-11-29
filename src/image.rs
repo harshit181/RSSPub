@@ -3,11 +3,12 @@ use image::io::Reader as ImageReader;
 use image::ImageFormat;
 use regex::Regex;
 use reqwest::Client;
-use std::io::Cursor;
+use std::io::{Cursor, Write};
+use tempfile::NamedTempFile;
 use tokio::task::JoinSet;
 use tracing::{error, info, warn};
 
-pub async fn process_images(html: &str) -> (String, Vec<(String, Vec<u8>, String)>) {
+pub async fn process_images(html: &str) -> (String, Vec<(String, NamedTempFile, String)>) {
     let mut processed_html = html.to_string();
     let mut images = Vec::new();
 
@@ -44,9 +45,6 @@ pub async fn process_images(html: &str) -> (String, Vec<(String, Vec<u8>, String
                     match resize_and_grayscale(&img_data, format) {
                         Ok(processed_data) => {
                             let extension = "jpg";
-                            // Use a hash or simple index for filename. Index is easier but requires coordination if we want global uniqueness.
-                            // Here we are processing per article, so index is fine if we scope it.
-                            // But wait, 'i' is passed in.
                             let filename = format!(
                                 "image_{}_{}.{}",
                                 chrono::Utc::now().timestamp_millis(),
@@ -54,7 +52,22 @@ pub async fn process_images(html: &str) -> (String, Vec<(String, Vec<u8>, String
                                 extension
                             );
                             let mime_type = "image/jpeg".to_string();
-                            Ok((src_clone, filename, processed_data, mime_type))
+
+                            // Write to temp file
+                            match NamedTempFile::new() {
+                                Ok(mut temp_file) => {
+                                    if let Err(e) = temp_file.write_all(&processed_data) {
+                                        return Err((
+                                            src_clone,
+                                            format!("Failed to write to temp file: {}", e),
+                                        ));
+                                    }
+                                    Ok((src_clone, filename, temp_file, mime_type))
+                                }
+                                Err(e) => {
+                                    Err((src_clone, format!("Failed to create temp file: {}", e)))
+                                }
+                            }
                         }
                         Err(e) => Err((src_clone, format!("Processing failed: {}", e))),
                     }
@@ -66,10 +79,10 @@ pub async fn process_images(html: &str) -> (String, Vec<(String, Vec<u8>, String
 
     while let Some(res) = join_set.join_next().await {
         match res {
-            Ok(Ok((src, filename, data, mime_type))) => {
+            Ok(Ok((src, filename, temp_file, mime_type))) => {
                 // Replace src in HTML
                 processed_html = processed_html.replace(&src, &filename);
-                images.push((filename, data, mime_type));
+                images.push((filename, temp_file, mime_type));
             }
             Ok(Err((src, e))) => {
                 warn!("Failed to process image {}: {}", src, e);
