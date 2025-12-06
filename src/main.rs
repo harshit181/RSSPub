@@ -1,15 +1,21 @@
 mod db;
 mod epub_gen;
 mod feed;
+#[cfg(feature = "mem_opt")]
+mod image;
+#[cfg(not(feature = "mem_opt"))]
+#[path = "image_inmem.rs"]
 mod image;
 mod opds;
 mod processor;
 mod scheduler;
+mod epub_message;
+
 use crate::db::Feed;
 use axum::{
     extract::{Json, Path, State},
     http::{header, HeaderMap, StatusCode},
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     routing::{delete, get, post},
     Router,
 };
@@ -31,25 +37,23 @@ struct GenerateRequest {
 
 #[tokio::main]
 async fn main() {
-    // Initialize tracing
-    // Initialize tracing
+    #[cfg(feature = "mem_opt")]
+    let _vips_app = libvips::VipsApp::new("rpub", false).expect("Failed to initialize libvips");
+
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "info,html5ever=error".into());
     tracing_subscriber::fmt().with_env_filter(filter).init();
 
-    // Initialize DB
     let conn = db::init_db("rpub.db").expect("Failed to initialize database");
     let db_mutex = Arc::new(Mutex::new(conn));
     let state = Arc::new(AppState {
         db: db_mutex.clone(),
     });
 
-    // Initialize Scheduler
     let _sched = scheduler::init_scheduler(db_mutex)
         .await
         .expect("Failed to initialize scheduler");
 
-    // Ensure output directory exists
     tokio::fs::create_dir_all("static/epubs").await.unwrap();
 
     let app = Router::new()
@@ -70,7 +74,6 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-// OPDS Handler
 async fn opds_handler(headers: HeaderMap) -> Result<impl IntoResponse, (StatusCode, String)> {
     let host = headers
         .get(header::HOST)
@@ -99,7 +102,6 @@ async fn opds_handler(headers: HeaderMap) -> Result<impl IntoResponse, (StatusCo
     Ok((response_headers, xml))
 }
 
-// Download Handlers
 async fn list_downloads() -> Result<Json<Vec<String>>, (StatusCode, String)> {
     let mut files = Vec::new();
     let mut entries = tokio::fs::read_dir("static/epubs").await.map_err(|e| {
@@ -235,7 +237,7 @@ async fn delete_schedule(
 async fn generate_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<GenerateRequest>,
-) -> Result<Response, (StatusCode, String)> {
+) -> Result<StatusCode, (StatusCode, String)> {
     info!("Received request to generate EPUB");
 
     // 1. Determine Feeds to Fetch
@@ -260,38 +262,20 @@ async fn generate_handler(
         ));
     }
 
-    // 2. Generate and Save using Processor
-    let filename = processor::generate_and_save(feeds_to_fetch, &state.db, "static/epubs")
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Generation failed: {}", e),
-            )
-        })?;
+    // 2. Spawn Background Task
+    let db_clone = state.db.clone();
+    tokio::spawn(async move {
+        info!("Starting background EPUB generation...");
+        match processor::generate_and_save(feeds_to_fetch, &db_clone, "static/epubs").await {
+            Ok(filename) => {
+                info!("Background generation completed successfully: {}", filename);
+            }
+            Err(e) => {
+                tracing::error!("Background generation failed: {}", e);
+            }
+        }
+    });
 
-    // 3. Return Response (Download)
-    // We read the file back to stream it to the user, or we could just redirect them to the static file.
-    // For now, let's read it back to keep the existing behavior of immediate download.
-    let filepath = format!("static/epubs/{}", filename);
-    let epub_data = tokio::fs::read(&filepath).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to read generated file: {}", e),
-        )
-    })?;
-
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        header::CONTENT_TYPE,
-        "application/epub+zip".parse().unwrap(),
-    );
-    headers.insert(
-        header::CONTENT_DISPOSITION,
-        format!("attachment; filename=\"{}\"", filename)
-            .parse()
-            .unwrap(),
-    );
-
-    Ok((headers, epub_data).into_response())
+    // 3. Return Accepted
+    Ok(StatusCode::ACCEPTED)
 }

@@ -6,7 +6,11 @@ use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
-pub async fn generate_epub(feeds: Vec<Feed>, _db: &Arc<Mutex<Connection>>) -> Result<Vec<u8>> {
+pub async fn generate_epub(
+    feeds: Vec<Feed>,
+    _db: &Arc<Mutex<Connection>>,
+    output_path: &str,
+) -> Result<()> {
     info!("Fetching {} feeds...", feeds.len());
 
     let (fetched_feeds, errors) = feed::fetch_feeds(&feeds).await;
@@ -18,11 +22,12 @@ pub async fn generate_epub(feeds: Vec<Feed>, _db: &Arc<Mutex<Connection>>) -> Re
     }
 
     // 4. Generate EPUB Data
-    let epub_data = epub_gen::generate_epub_data(&articles)
+    let file = std::fs::File::create(output_path)?;
+    epub_gen::generate_epub_data(&articles, file)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to generate EPUB: {}", e))?;
 
-    Ok(epub_data)
+    Ok(())
 }
 
 pub async fn generate_and_save(
@@ -30,12 +35,10 @@ pub async fn generate_and_save(
     db: &Arc<Mutex<Connection>>,
     output_dir: &str,
 ) -> Result<String> {
-    let epub_data = generate_epub(feeds, db).await?;
-
     let filename = format!("rss_digest_{}.epub", Utc::now().format("%Y%m%d_%H%M%S"));
     let filepath = format!("{}/{}", output_dir, filename);
 
-    tokio::fs::write(&filepath, &epub_data).await?;
+    generate_epub(feeds, db, &filepath).await?;
 
     Ok(filename)
 }
