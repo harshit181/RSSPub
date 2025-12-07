@@ -6,6 +6,7 @@ use feed_rs::model::Feed;
 use feed_rs::parser;
 use reqwest::Client;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::Semaphore;
 use tracing::{error, info, warn};
 
@@ -28,6 +29,7 @@ pub async fn fetch_feeds(
 ) -> (Vec<FeedWrapper>, Vec<(String, String)>) {
     let client = Client::builder()
         .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .timeout(Duration::from_secs( 45))
         .cookie_store(true)
         .build()
         .unwrap_or_else(|_| Client::new());

@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use crate::db::Feed;
 use crate::{epub_gen, feed};
 use anyhow::Result;
@@ -21,13 +22,39 @@ pub async fn generate_epub(
         return Err(anyhow::anyhow!("No articles found in the last 24 hours."));
     }
 
-    // 4. Generate EPUB Data
-    let file = std::fs::File::create(output_path)?;
-    epub_gen::generate_epub_data(&articles, file)
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to generate EPUB: {}", e))?;
+    let temp_path = getTempFilePath(output_path);
+    info!("Generating EPUB to temporary file: {:?}", temp_path);
+    let file = std::fs::File::create(&temp_path)?;
+
+    match epub_gen::generate_epub_data(&articles, file).await {
+        Ok(_) => {
+            info!("EPUB generation successful. moving to {}", output_path);
+            std::fs::rename(&temp_path, output_path)?;
+            Ok(())
+        }
+        Err(e) => {
+            let _ = std::fs::remove_file(&temp_path);
+            Err(anyhow::anyhow!("Failed to generate EPUB: {}", e))
+        }
+    }?;
 
     Ok(())
+}
+
+fn getTempFilePath(output_path: &str) -> PathBuf {
+    let output_path_obj = std::path::Path::new(output_path);
+    let parent_dir = output_path_obj
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."));
+    let temp_filename = format!(
+        "{}.part",
+        output_path_obj
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+    );
+    let temp_path = parent_dir.join(&temp_filename);
+    temp_path
 }
 
 pub async fn generate_and_save(
