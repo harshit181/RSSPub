@@ -1,25 +1,23 @@
 use crate::epub_message::EpubPart;
 use crate::feed::Article;
 use crate::image::process_images;
-use ammonia::Builder;
 use anyhow::Result;
 use chrono::Utc;
 use epub_builder::{EpubBuilder, EpubContent, EpubVersion, ReferenceType, ZipLibrary};
-use regex::Regex;
+use indicatif::{ProgressBar, ProgressStyle};
 use std::io::{Seek, SeekFrom, Write};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::task::JoinSet;
 use tracing::info;
-use indicatif::{ProgressBar, ProgressStyle};
 
 pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     articles: &[Article],
     output: W,
 ) -> Result<()> {
     use crate::epub_message::{CompletionMessage, EpubPart};
-    use std::collections::HashMap;
     use crate::util;
+    use std::collections::HashMap;
     let mut articles_by_source: HashMap<String, Vec<&Article>> = HashMap::new();
     for article in articles {
         articles_by_source
@@ -95,7 +93,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
 
         let mut current_seq = 0;
         let mut buffer: HashMap<usize, Vec<EpubPart>> = HashMap::new();
-        
+
         let pb = ProgressBar::new(total_parts as u64);
         pb.set_style(ProgressStyle::default_bar()
             .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) Articles")
@@ -120,7 +118,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         current_seq = 0;
         let total_images = &counter_again.load(Ordering::Relaxed);
         info!("Total images are {}", &total_images);
-        
+
         let pb_images = ProgressBar::new(*total_images as u64);
         pb_images.set_style(ProgressStyle::default_bar()
             .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) Images")
@@ -160,7 +158,8 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         ));
     }
     master_toc_html.push_str("</ul>");
-    let master_toc_content = util::wrap_xhtml("Table of Contents", &util::fix_xhtml(&master_toc_html));
+    let master_toc_content =
+        util::wrap_xhtml("Table of Contents", &util::fix_xhtml(&master_toc_html));
 
     tx.send(CompletionMessage {
         sequence_id: master_toc_seq_id,
@@ -306,4 +305,3 @@ fn populate_epub_data(builder: &mut EpubBuilder<ZipLibrary>, parts: Vec<EpubPart
     }
     Ok(())
 }
-
