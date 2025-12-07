@@ -12,17 +12,17 @@ chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 anyhow = "1.0" # For error handling
 axum = "0.8.7"
-tower-http = { version = "0.5", features = ["fs", "trace"] }
+tower-http = { version = "0.6.7", features = ["fs", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
-dom_smoothie = "0.13"
+dom_smoothie = "0.14.0"
 rusqlite = { version = "0.37", features = ["bundled"] }
-tokio-cron-scheduler = "0.9"
+tokio-cron-scheduler = "0.15.1"
 libvips = { version = "1.7.1", optional = true }
 regex = "1.10"
 ammonia = "4.1.2"
 tempfile = "3.23.0"
-image = "0.24"
+image = "0.25.9"
 uuid = { version = "1.19.0 ",features = ["v4", ] }
 base64 = "0.22.1"
 indicatif = "0.18.3"
