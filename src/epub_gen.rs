@@ -180,7 +180,10 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         let source_toc_filename = format!("toc_{}.xhtml", source_slug);
         let source_articles = &articles_by_source[source];
 
-        let mut source_toc_html = format!("<h1>{}</h1><ul>", util::escape_xml(source));
+        let mut source_toc_html = format!(
+            "<h1>{}</h1><p><a href=\"toc.xhtml\">Back to Master TOC</a></p><ul>",
+            util::escape_xml(source)
+        );
         for article in source_articles {
             let index = articles
                 .iter()
@@ -193,7 +196,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
                 util::escape_xml(&article.title)
             ));
         }
-        source_toc_html.push_str("</ul>");
+        source_toc_html.push_str("</ul><p><a href=\"toc.xhtml\">Back to Master TOC</a></p>");
         let source_toc_content = util::wrap_xhtml(source, &util::fix_xhtml(&source_toc_html));
 
         let seq_id = source_toc_seq_ids[source];
