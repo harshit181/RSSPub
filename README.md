@@ -7,6 +7,11 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 
 ![rpub screenshot](screenshot.png)
 
+## Roadmap
+
+- [ ] Add email send option for Kindle
+- [ ] Make it multi-platform via Tauri or Dioxus
+
 ## Features
 
 - **RSS/Atom Parsing:** Automatically fetches and parses content from your configured feeds.
@@ -96,6 +101,8 @@ cargo run --features mem_opt
 -   **Database:** SQLite (Rusqlite)
 -   **Frontend:** Static HTML/CSS/JS served by Axum
 -   **Image Processing:** `image` crate (default) or `libvips` (optional)
+
+
 
 ## License
 
