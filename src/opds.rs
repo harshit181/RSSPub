@@ -30,10 +30,10 @@ pub async fn generate_opds_feed(base_url: &str, dir_path: &str) -> Result<String
     let mut xml = String::from(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/" xmlns:opds="http://opds-spec.org/2010/catalog">
-  <id>urn:uuid:rpub-feed</id>
-  <title>RPub RSS Digest</title>
+  <id>urn:uuid:rsspub-feed</id>
+  <title>RSSPub RSS Digest</title>
   <author>
-    <name>RPub</name>
+    <name>RSSPub</name>
   </author>
 "#,
     );
@@ -48,7 +48,7 @@ pub async fn generate_opds_feed(base_url: &str, dir_path: &str) -> Result<String
 
         xml.push_str("  <entry>\n");
         xml.push_str(&format!("    <title>RSS Digest - {}</title>\n", date_str));
-        xml.push_str(&format!("    <id>urn:rpub:epub:{}</id>\n", filename));
+        xml.push_str(&format!("    <id>urn:rsspub:epub:{}</id>\n", filename));
         xml.push_str(&format!(
             "    <updated>{}</updated>\n",
             modified.to_rfc3339()

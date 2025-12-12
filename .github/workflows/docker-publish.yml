@@ -37,6 +37,8 @@ jobs:
           push: true
           tags: |
             harshit181/rpub:latest
-            harshit181/rpub:${{ github.event.release.tag_name }}
+            harshit181/rsspub:latest
+            harshit181/rsspub:${{ github.event.release.tag_name }}
             ghcr.io/harshit181/rpub:latest
-            ghcr.io/harshit181/rpub:${{ github.event.release.tag_name }}
+            ghcr.io/harshit181/rsspub:latest
+            ghcr.io/harshit181/rsspub:${{ github.event.release.tag_name }}

@@ -1,7 +1,7 @@
 [package]
-name = "rpub"
-version = "0.1.0"
-edition = "2021"
+name = "rsspub"
+version = "0.9.5"
+edition = "2024"
 
 [dependencies]
 feed-rs = "2.3.1"

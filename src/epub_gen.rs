@@ -70,7 +70,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
 
         builder.epub_version(EpubVersion::V33);
         builder
-            .metadata("author", "RPub RSS Book")
+            .metadata("author", "RSSPub RSS Book")
             .map_err(|e| anyhow::anyhow!("{}", e))?;
         builder
             .metadata(

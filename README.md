@@ -1,11 +1,11 @@
-# rpub
-[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?name=rpub&type=docker&image=harshit181%2Frpub%3Alatest&instance_type=eco-nano&regions=sin&env%5BRPUB_PASSWORD%5D=root&env%5BRPUB_USERNAME%5D=root&ports=3000%3Bhttp%3B%2F&hc_protocol%5B3000%5D=tcp&hc_grace_period%5B3000%5D=5&hc_interval%5B3000%5D=30&hc_restart_limit%5B3000%5D=3&hc_timeout%5B3000%5D=5&hc_path%5B3000%5D=%2F&hc_method%5B3000%5D=get)
+# rsspub
+[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?name=rsspub&type=docker&image=harshit181%2Frsspub%3Alatest&instance_type=eco-nano&regions=sin&env%5Brsspub_PASSWORD%5D=root&env%5Brsspub_USERNAME%5D=root&ports=3000%3Bhttp%3B%2F&hc_protocol%5B3000%5D=tcp&hc_grace_period%5B3000%5D=5&hc_interval%5B3000%5D=30&hc_restart_limit%5B3000%5D=3&hc_timeout%5B3000%5D=5&hc_path%5B3000%5D=%2F&hc_method%5B3000%5D=get)
 
-**rpub** is a self-hosted Rust application that turns your favorite RSS/Atom feeds into a personal daily newspaper (EPUB). It fetches articles, processes images, and bundles everything into an EPUB file that you can read on your e-reader or tablet.
+**rsspub** is a self-hosted Rust application that turns your favorite RSS/Atom feeds into a personal daily newspaper (EPUB). It fetches articles, processes images, and bundles everything into an EPUB file that you can read on your e-reader or tablet.
 
 It also serves an OPDS feed, making it easy to download the generated EPUBs directly to compatible readers (like KOReader, Moon+ Reader, etc.).
 
-![rpub screenshot](screenshot.png)
+![rsspub screenshot](screenshot.png)
 
 ## Roadmap
 
@@ -38,8 +38,8 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/rpub.git
-    cd rpub
+    git clone https://github.com/yourusername/rsspub.git
+    cd rsspub
     ```
 
 2.  Run the application:
@@ -50,7 +50,7 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 
 ### Docker
 
-You can also run **rpub** using Docker Compose.
+You can also run **rsspub** using Docker Compose.
 
 1.  Make sure you have Docker and Docker Compose installed.
 2.  Run the application:
@@ -64,12 +64,12 @@ You can also run **rpub** using Docker Compose.
 To build the Docker image manually:
 
 ```bash
-docker build -t rpub .
+docker build -t rsspub .
 ```
 
 To run the container:
 ```bash
-docker run -p 3000:3000 -v $(pwd)/data:/app/data -v $(pwd)/static/epubs:/app/static/epubs rpub
+docker run -p 3000:3000 -v $(pwd)/data:/app/data -v $(pwd)/static/epubs:/app/static/epubs rsspub
 ```
 
 ### Usage
@@ -93,8 +93,8 @@ You can configure the application to automatically send generated EPUBs via emai
 
 You can configure the application using environment variables:
 
--   `RPUB_USERNAME`: Set a username for Basic Authentication.
--   `RPUB_PASSWORD`: Set a password for Basic Authentication.
+-   `rsspub_USERNAME`: Set a username for Basic Authentication.
+-   `rsspub_PASSWORD`: Set a password for Basic Authentication.
 
 If these variables are set, the Web UI and API (except `/opds`) will require authentication.
 
@@ -108,7 +108,7 @@ cargo run --features mem_opt
 
 ### Alternatives
 
-- **Calibre:** [Calibre](https://calibre-ebook.com/) also has a "Fetch News" feature that can download RSS feeds and convert them to EPUB/MOBI. It is a desktop application, whereas Rpub is designed to run as a server.
+- **Calibre:** [Calibre](https://calibre-ebook.com/) also has a "Fetch News" feature that can download RSS feeds and convert them to EPUB/MOBI. It is a desktop application, whereas rsspub is designed to run as a server.
 - **KindleEar:** [KindleEar](https://github.com/cdhigh/KindleEar) is a Calibre port that runs on web to aggregate RSS feeds and send them to your Kindle.(https://github.com/harshit181/KindleEar minor code change to enable opds server)
 
 ## Architecture

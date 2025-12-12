@@ -56,7 +56,7 @@ struct GenerateRequest {
 #[tokio::main]
 async fn main() {
     #[cfg(feature = "mem_opt")]
-    let _vips_app = libvips::VipsApp::new("rpub", false).expect("Failed to initialize libvips");
+    let _vips_app = libvips::VipsApp::new("rsspub", false).expect("Failed to initialize libvips");
     #[cfg(feature = "alternative-alloc")]
     tikv_jemalloc_ctl::background_thread::write(true).expect("failed to enable background threads");
 
