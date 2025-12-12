@@ -2,4 +2,8 @@
 /static/epubs
 /src/bin
 /.idea
-rpub.db
+.DS_Store
+*.db
+/dockerfiles
+/memtest
+vncmain.sh
