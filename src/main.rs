@@ -32,7 +32,8 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex as TokioMutex;
 
 use base64::Engine;
-use tower_http::services::ServeDir;
+use tower::ServiceBuilder;
+use tower_http::{services::ServeDir, set_header::SetResponseHeaderLayer};
 use tracing::{info, warn};
 
 #[cfg(feature = "alternative-alloc")]
@@ -102,7 +103,14 @@ async fn main() {
     let app = Router::new()
         .merge(public_routes)
         .merge(protected_routes)
-        .fallback_service(ServeDir::new("static"))
+        .fallback_service(
+            ServiceBuilder::new()
+                .layer(SetResponseHeaderLayer::overriding(
+                    header::CACHE_CONTROL,
+                    header::HeaderValue::from_static("public, max-age=3600"),
+                ))
+                .service(ServeDir::new("static")),
+        )
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
