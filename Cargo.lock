@@ -685,9 +685,9 @@ dependencies = [
 
 [[package]]
 name = "epub-builder"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55d37842aa94140063b41be5fd51309794d5d0f496fc23b26b2c85dd0b691c0d"
+checksum = "94e94381ac1e9ec44be90478a25ee8e115516d65a9d8ecb46043cc0be18cd965"
 dependencies = [
  "chrono",
  "html-escape",
