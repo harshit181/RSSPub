@@ -70,6 +70,33 @@ async fn run_scheduled_generation(db: Arc<Mutex<Connection>>) -> Result<()> {
 
     let filename = processor::generate_and_save(feeds, &db, "static/epubs").await?;
     info!("Scheduled generation completed: {}", filename);
+
+    let send_email = {
+        let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
+        match db::get_email_config(&conn)? {
+            Some(config) => config.enable_auto_send,
+            None => false,
+        }
+    };
+
+    if send_email {
+        info!("Auto-send enabled. Sending email...");
+        
+        let config_opt = {
+            let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
+            db::get_email_config(&conn)?
+        };
+
+        if let Some(config) = config_opt {
+             let epub_path = std::path::Path::new("static/epubs").join(&filename);
+             if let Err(e) = crate::email::send_epub(&config, &epub_path).await {
+                 error!("Failed to auto-send email: {}", e);
+             } else {
+                 info!("Auto-send email sent successfully.");
+             }
+        }
+    }
+
     Ok(())
 }
 

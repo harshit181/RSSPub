@@ -1,4 +1,5 @@
 mod db;
+mod email;
 mod epub_gen;
 mod epub_message;
 mod feed;
@@ -47,6 +48,8 @@ struct AppState {
 struct GenerateRequest {
     #[serde(default)]
     feeds: Vec<Feed>,
+    #[serde(default)]
+    send_email: bool,
 }
 
 #[tokio::main]
@@ -83,6 +86,10 @@ async fn main() {
         .route("/schedules/{id}", delete(delete_schedule))
         .route("/downloads", get(list_downloads))
         .route("/cover", post(upload_cover))
+        .route(
+            "/email-config",
+            get(get_email_config_handler).post(update_email_config_handler),
+        )
         .route("/auth/check", get(|| async { StatusCode::OK }));
 
     let protected_routes =
@@ -397,11 +404,38 @@ async fn generate_handler(
 
     // 2. Spawn Background Task
     let db_clone = state.db.clone();
+    let send_email = payload.send_email;
+
     tokio::spawn(async move {
         info!("Starting background EPUB generation...");
         match processor::generate_and_save(feeds_to_fetch, &db_clone, "static/epubs").await {
             Ok(filename) => {
                 info!("Background generation completed successfully: {}", filename);
+                if send_email {
+                    info!("Email sending requested. Fetching config...");
+                    let config_result = {
+                        let db = db_clone.lock().unwrap(); // Use blocking lock for quick access or async if needed, but here we are in async block.
+                                                           // Wait, db_clone is Arc<Mutex<Connection>> (std::sync::Mutex).
+                                                           // So lock().unwrap() is correct.
+                        db::get_email_config(&db)
+                    };
+
+                    match config_result {
+                        Ok(Some(config)) => {
+                            let epub_path = std::path::Path::new("static/epubs").join(&filename);
+                            info!("Sending email for {}...", filename);
+                            if let Err(e) = email::send_epub(&config, &epub_path).await {
+                                tracing::error!("Failed to send email: {}", e);
+                            }
+                        }
+                        Ok(None) => {
+                            tracing::warn!("Email sending requested but no email config found.");
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to fetch email config: {}", e);
+                        }
+                    }
+                }
             }
             Err(e) => {
                 tracing::error!("Background generation failed: {}", e);
@@ -454,6 +488,48 @@ async fn upload_cover(mut multipart: Multipart) -> Result<StatusCode, (StatusCod
     }
 
     Err((StatusCode::BAD_REQUEST, "No cover file found".to_string()))
+}
+
+async fn get_email_config_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Option<db::EmailConfig>>, (StatusCode, String)> {
+    let db = state.db.lock().map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "DB lock failed".to_string(),
+        )
+    })?;
+    let config = db::get_email_config(&db)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if let Some(mut c) = config {
+        c.smtp_password = "".to_string();
+        Ok(Json(Some(c)))
+    } else {
+        Ok(Json(None))
+    }
+}
+
+async fn update_email_config_handler(
+    State(state): State<Arc<AppState>>,
+    Json(mut payload): Json<db::EmailConfig>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let db = state.db.lock().map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "DB lock failed".to_string(),
+        )
+    })?;
+
+    if payload.smtp_password.is_empty() {
+        if let Ok(Some(existing)) = db::get_email_config(&db) {
+            payload.smtp_password = existing.smtp_password;
+        }
+    }
+
+    db::save_email_config(&db, &payload)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(StatusCode::OK)
 }
 
 async fn auth(

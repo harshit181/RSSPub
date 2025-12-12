@@ -26,6 +26,38 @@ pub fn init_db(path: &str) -> Result<Connection> {
         [],
     )?;
 
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS email_config (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            smtp_host TEXT NOT NULL,
+            smtp_port INTEGER NOT NULL,
+            smtp_password TEXT NOT NULL,
+            email_address TEXT NOT NULL,
+            to_email TEXT NOT NULL,
+            enable_auto_send BOOLEAN NOT NULL DEFAULT 0
+        )",
+        [],
+    )?;
+
+    {
+        let mut stmt = conn.prepare("PRAGMA table_info(email_config)")?;
+        let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+        let mut has_column = false;
+        for row in rows {
+            if row? == "enable_auto_send" {
+                has_column = true;
+                break;
+            }
+        }
+
+        if !has_column {
+            conn.execute(
+                "ALTER TABLE email_config ADD COLUMN enable_auto_send BOOLEAN NOT NULL DEFAULT 0",
+                [],
+            )?;
+        }
+    }
+
     Ok(conn)
 }
 
@@ -43,6 +75,17 @@ pub struct Schedule {
     pub id: Option<i64>,
     pub cron_expression: String,
     pub active: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct EmailConfig {
+    pub smtp_host: String,
+    pub smtp_port: u16,
+    pub smtp_password: String,
+    pub email_address: String,
+    pub to_email: String,
+    #[serde(default)]
+    pub enable_auto_send: bool,
 }
 
 pub fn add_feed(
@@ -108,5 +151,43 @@ pub fn get_schedules(conn: &Connection) -> Result<Vec<Schedule>> {
 
 pub fn delete_schedule(conn: &Connection, id: i64) -> Result<()> {
     conn.execute("DELETE FROM schedules WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
+pub fn get_email_config(conn: &Connection) -> Result<Option<EmailConfig>> {
+    let mut stmt = conn.prepare(
+        "SELECT smtp_host, smtp_port, smtp_password, email_address, to_email, enable_auto_send FROM email_config WHERE id = 1",
+    )?;
+    let mut config_iter = stmt.query_map([], |row| {
+        Ok(EmailConfig {
+            smtp_host: row.get(0)?,
+            smtp_port: row.get(1)?,
+            smtp_password: row.get(2)?,
+            email_address: row.get(3)?,
+            to_email: row.get(4)?,
+            enable_auto_send: row.get(5).unwrap_or(false),
+        })
+    })?;
+
+    if let Some(config) = config_iter.next() {
+        Ok(Some(config?))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn save_email_config(conn: &Connection, config: &EmailConfig) -> Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO email_config (id, smtp_host, smtp_port, smtp_password, email_address, to_email, enable_auto_send)
+         VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6)",
+        params![
+            config.smtp_host,
+            config.smtp_port,
+            config.smtp_password,
+            config.email_address,
+            config.to_email,
+            config.enable_auto_send
+        ],
+    )?;
     Ok(())
 }

@@ -19,6 +19,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 dom_smoothie = "0.14.0"
 rusqlite = { version = "0.37", features = ["bundled"] }
 tokio-cron-scheduler = "0.15.1"
+lettre = { version = "0.11.19", features = ["tokio1", "tokio1-native-tls", "smtp-transport"] }
 libvips = { version = "1.7.1", optional = true }
 regex = "1.10"
 ammonia = "4.1.2"
