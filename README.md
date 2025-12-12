@@ -9,8 +9,9 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 
 ## Roadmap
 
-- [ ] Add email send option for Kindle
+- [x] Add email send option for Kindle
 - [ ] Make it multi-platform via Tauri or Dioxus
+- [ ] Add configuration for few of the hardcoded settings
 
 ## Features
 
@@ -21,6 +22,7 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 - **OPDS Catalog:** Built-in OPDS server (`/opds`) to browse and download generated EPUBs.
 - **Scheduling:** Automated generation based on cron expressions.
 - **Authentication:** Optional Basic Authentication to protect your instance.
+- **Email Delivery:** Automatically send generated EPUBs to a configured email address.
 - **Performance:** Built with Rust, Axum, and Tokio for high performance and low resource usage. Includes optional `libvips` support for efficient image processing.
 
 ## Getting Started
@@ -77,6 +79,14 @@ docker run -p 3000:3000 -v $(pwd)/data:/app/data -v $(pwd)/static/epubs:/app/sta
 4.  **Download:**
     - **Direct Download:** Download generated EPUBs from the "Downloads" section in the UI.
     - **OPDS:** Add `http://<your-server-ip>:3000/opds` to your e-reader's OPDS catalog list.
+
+### Email Configuration
+
+You can configure the application to automatically send generated EPUBs via email (e.g., to your Send-to-Kindle address).
+
+- **Gmail Configuration:** Tested with `smtp.gmail.com` on port `587`.
+- **App Password:** If using Gmail, you must use an **App Password** (your regular password will not work).
+- **Recommendation:** It is recommended to use a **temporary or dedicated email account** for this feature, rather than your primary personal account.
 
 ### Configuration
 

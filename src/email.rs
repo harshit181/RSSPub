@@ -3,13 +3,15 @@ use anyhow::{Context, Result};
 use lettre::message::header::ContentType;
 use lettre::message::{Attachment, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
+use lettre::transport::smtp::response::Response;
+use lettre::transport::smtp::Error;
 use lettre::AsyncSmtpTransport;
 use lettre::Tokio1Executor;
 use lettre::{AsyncTransport, Message};
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
-use tracing::info;
+use tracing::{error, info};
 
 pub async fn send_epub(config: &EmailConfig, epub_path: &Path) -> Result<()> {
     info!("Preparing to send email to {}", config.to_email);
@@ -59,8 +61,15 @@ pub async fn send_epub(config: &EmailConfig, epub_path: &Path) -> Result<()> {
             .timeout(Some(Duration::from_mins(3)))
             .build();
 
-    mailer.send(email).await.context("Failed to send email")?;
+    //mailer.send(email).await.context("Failed to send email")?;
+    match mailer.send(email).await {
+        Ok(_x) => {
+            info!("Email sent successfully!");
+        }
+        Err(y) => {
+            error!("Failed to send email: {}", y);
+        }
+    }
 
-    info!("Email sent successfully!");
     Ok(())
 }
