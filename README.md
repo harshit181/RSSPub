@@ -53,7 +53,13 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 You can also run **rsspub** using Docker Compose.
 
 1.  Make sure you have Docker and Docker Compose installed.
-2.  Run the application:
+2.  (Optional) Create a `.env` file to configure environment variables:
+    ```env
+    RPUB_USERNAME=your_username
+    RPUB_PASSWORD=your_password
+    EPUBS_HOST_DIR=./your_custom_db_dir # Defaults to ./db if not set
+    ```
+3.  Run the application:
     ```bash
     docker-compose up -d
     ```
@@ -93,8 +99,8 @@ You can configure the application to automatically send generated EPUBs via emai
 
 You can configure the application using environment variables:
 
--   `rsspub_USERNAME`: Set a username for Basic Authentication.
--   `rsspub_PASSWORD`: Set a password for Basic Authentication.
+-   `RPUB_USERNAME`: Set a username for Basic Authentication.
+-   `RPUB_PASSWORD`: Set a password for Basic Authentication.
 
 If these variables are set, the Web UI and API (except `/opds`) will require authentication.
 
