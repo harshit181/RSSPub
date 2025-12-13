@@ -93,8 +93,8 @@ You can configure the application to automatically send generated EPUBs via emai
 
 You can configure the application using environment variables:
 
--   `rsspub_USERNAME`: Set a username for Basic Authentication.
--   `rsspub_PASSWORD`: Set a password for Basic Authentication.
+-   `RPUB_USERNAME`: Set a username for Basic Authentication.
+-   `RPUB_PASSWORD`: Set a password for Basic Authentication.
 
 If these variables are set, the Web UI and API (except `/opds`) will require authentication.
 
