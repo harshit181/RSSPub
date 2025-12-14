@@ -71,6 +71,7 @@ async fn main() {
     let protected_routes = Router::new()
         .route("/generate", post(generate_handler))
         .route("/feeds", get(list_feeds).post(add_feed))
+        .route("/feeds/import", post(import_opml))
         .route("/feeds/{id}", delete(delete_feed))
         .route("/schedules", get(list_schedules).post(add_schedule))
         .route("/schedules/{id}", delete(delete_schedule))
@@ -510,6 +511,77 @@ async fn update_email_config_handler(
     db::save_email_config(&db, &payload)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
+}
+
+async fn import_opml(
+    State(state): State<Arc<AppState>>,
+    mut multipart: Multipart,
+) -> Result<StatusCode, (StatusCode, String)> {
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            format!("Failed to read multipart field: {}", e),
+        )
+    })? {
+        let name = field.name().unwrap_or("").to_string();
+        if name == "file" {
+            let data = field.bytes().await.map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to read field bytes: {}", e),
+                )
+            })?;
+
+             let opml_str = String::from_utf8(data.to_vec()).map_err(|e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    format!("Invalid UTF-8 sequence: {}", e),
+                )
+            })?;
+
+            let document = opml::OPML::from_str(&opml_str).map_err(|e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    format!("Failed to parse OPML: {}", e),
+                )
+            })?;
+
+            let db = state.db.lock().map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "DB lock failed".to_string(),
+                )
+            })?;
+
+            for outline in document.body.outlines {
+                if let Some(xml_url) = outline.xml_url {
+                     let _ = db::add_feed(
+                        &db,
+                        &xml_url,
+                        Some(&outline.text),
+                        0, 
+                    );
+                }
+                
+                if !outline.outlines.is_empty() {
+                     for child in outline.outlines {
+                        if let Some(xml_url) = child.xml_url {
+                            let _ = db::add_feed(
+                                &db,
+                                &xml_url,
+                                Some(&child.text),
+                                0,
+                            );
+                        }
+                     }
+                }
+            }
+            
+            return Ok(StatusCode::CREATED);
+        }
+    }
+
+    Err((StatusCode::BAD_REQUEST, "No file field found".to_string()))
 }
 
 async fn auth(

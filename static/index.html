@@ -49,6 +49,12 @@
                             <circle cx="5" cy="19" r="1"></circle>
                         </svg>
                         <h2>Feeds</h2>
+                        <input type="file" id="opml-file" accept=".opml,.xml" style="display: none;"
+                            onchange="importOpml(this)">
+                        <button onclick="document.getElementById('opml-file').click()" class="add-btn"
+                            style="margin-left: auto; padding: 5px 10px; font-size: 0.8rem;">
+                            Import OPML
+                        </button>
                     </div>
                     <ul id="feeds-list" class="item-list"></ul>
                     <form id="add-feed-form">
@@ -432,6 +438,42 @@
             }
         }
 
+        async function importOpml(input) {
+            if (input.files.length === 0) return;
+
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const btn = input.nextElementSibling;
+            const originalText = btn.textContent;
+            btn.textContent = "Importing...";
+            btn.disabled = true;
+
+            try {
+                const headers = {};
+                if (authHeader) headers["Authorization"] = authHeader;
+
+                const res = await fetch("/feeds/import", {
+                    method: "POST",
+                    headers: headers,
+                    body: formData
+                });
+
+                if (res.ok) {
+                    alert("Feeds imported successfully!");
+                    loadFeeds();
+                } else {
+                    alert("Import failed: " + (await res.text()));
+                }
+            } catch (e) {
+                alert("Error: " + e.message);
+            } finally {
+                input.value = ""; // Reset
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
         async function loadSchedules() {
             try {
                 const schedules = await api("/schedules");
