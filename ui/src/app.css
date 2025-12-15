@@ -491,3 +491,8 @@ input:checked+.slider:before {
 .popup-btn.error {
   background: var(--danger);
 }
+
+/* Tabs */
+.tabs-container {
+  margin-bottom: 2rem;
+}

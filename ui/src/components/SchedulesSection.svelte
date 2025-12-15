@@ -2,7 +2,6 @@
     import { onMount } from "svelte";
     import { api } from "../lib/api";
     import { schedules, isAuthenticated, popup } from "../lib/store";
-
     let hour = "";
     let minute = "";
     let timezone = "GMT+5:30";
@@ -94,7 +93,12 @@
 
 <section id="schedules-section" class="card">
     <div class="card-header">
-        <img src="/icons/clock.svg" alt="Schedule Icon" width="20" height="20" />
+        <img
+            src="/icons/clock.svg"
+            alt="Schedule Icon"
+            width="20"
+            height="20"
+        />
         <h2>Schedules</h2>
     </div>
     <ul id="schedules-list" class="item-list">

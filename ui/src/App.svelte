@@ -8,9 +8,13 @@
     import SchedulesSection from "./components/SchedulesSection.svelte";
     import DownloadsSection from "./components/DownloadsSection.svelte";
     import EmailConfigSection from "./components/EmailConfigSection.svelte";
+    import Tabs from "./components/Tabs.svelte";
     import { onMount } from "svelte";
     import { api } from "./lib/api";
     import { isAuthenticated, authHeader, isLoginVisible } from "./lib/store";
+
+    let activeTab = "Dashboard";
+    const tabs = ["Dashboard", "Configuration"];
 
     onMount(async () => {
         window.addEventListener("unauthorized", () => {
@@ -37,26 +41,32 @@
     <div class="container">
         <Header />
 
-        <main class="dashboard-grid">
-            <div class="column left-col">
-                <FeedsSection />
-            </div>
+        <div class="tabs-container">
+            <Tabs {tabs} bind:activeTab />
+        </div>
 
-            <div class="column right-col">
-                <GenerationSection />
+        {#if activeTab === "Dashboard"}
+            <main class="dashboard-grid">
+                <div class="column left-col">
+                    <FeedsSection />
+                </div>
 
-                <div class="sub-grid">
-                    <CoverSection />
-
-                    <div class="column">
-                        <SchedulesSection />
-                        <DownloadsSection />
-                    </div>
-
+                <div class="column right-col">
+                    <GenerationSection />
+                    <DownloadsSection />
+                </div>
+            </main>
+        {:else if activeTab === "Configuration"}
+             <main class="dashboard-grid">
+                <div class="column left-col">
+                     <CoverSection />
+                     <SchedulesSection />
+                </div>
+                <div class="column right-col">
                     <EmailConfigSection />
                 </div>
-            </div>
-        </main>
+            </main>
+        {/if}
     </div>
 {:else}
     <!-- -->

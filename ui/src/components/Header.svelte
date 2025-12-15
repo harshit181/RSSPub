@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { isAuthenticated } from '../lib/store';
+    import { isAuthenticated } from "../lib/store";
 </script>
 
 <header>
@@ -15,6 +15,8 @@
             height="18"
             style="margin-right: 6px; filter: invert(36%) sepia(74%) saturate(836%) hue-rotate(185deg) brightness(97%) contrast(92%);"
         />
-        <span id="connection-status">{$isAuthenticated ? 'Connected' : 'Disconnected'}</span>
+        <span id="connection-status"
+            >{$isAuthenticated ? "Connected" : "Disconnected"}</span
+        >
     </div>
 </header>
