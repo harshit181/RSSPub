@@ -1,0 +1,28 @@
+{
+    "tasks": {
+        "dev": "deno run -A --node-modules-dir npm:vite",
+        "build": "deno run -A --node-modules-dir npm:vite build",
+        "preview": "deno run -A --node-modules-dir npm:vite preview",
+        "check": "deno run -A --node-modules-dir npm:svelte-check --tsconfig ./tsconfig.app.json && deno run -A --node-modules-dir npm:typescript/tsc -p tsconfig.node.json"
+    },
+    "imports": {
+        "vite": "npm:vite@^7.2.4",
+        "svelte": "npm:svelte@^5.43.8",
+        "@sveltejs/vite-plugin-svelte": "npm:@sveltejs/vite-plugin-svelte@^6.2.1",
+        "@tsconfig/svelte": "npm:@tsconfig/svelte@^5.0.6",
+        "@types/node": "npm:@types/node@^24.10.1",
+        "svelte-check": "npm:svelte-check@^4.3.4",
+        "typescript": "npm:typescript@~5.9.3"
+    },
+    "compilerOptions": {
+        "lib": [
+            "dom",
+            "dom.iterable",
+            "esnext"
+        ],
+        "allowJs": true,
+        "skipLibCheck": true,
+        "strict": true
+    },
+    "nodeModulesDir": "auto"
+}
