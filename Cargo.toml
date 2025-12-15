@@ -37,3 +37,6 @@ jemalloc_pprof = {version="0.8.1",optional=true,features = ["symbolize"]}
 default = []
 mem_opt = ["dep:libvips"]
 alternative-alloc = ["tikv-jemallocator","tikv-jemalloc-ctl","jemalloc_pprof"]
+
+[profile.release]
+debug = true
