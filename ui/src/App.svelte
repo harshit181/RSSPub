@@ -60,10 +60,10 @@
              <main class="dashboard-grid">
                 <div class="column left-col">
                      <CoverSection />
-                     <SchedulesSection />
                 </div>
                 <div class="column right-col">
                     <EmailConfigSection />
+                    <SchedulesSection />
                 </div>
             </main>
         {/if}
