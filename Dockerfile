@@ -12,7 +12,7 @@ FROM denoland/deno:alpine as ui-builder
 
 WORKDIR /project
 
-COPY ui/package.json ui/deno.lock* ./
+COPY ui/deno.json ui/deno.lock* ./
 RUN deno install
 
 COPY ui .
