@@ -32,7 +32,6 @@ pub async fn process_images(
         }
     }
 
-    // Deduplicate matches
     matches.sort();
     matches.dedup();
     let total_images = matches.len();
@@ -115,7 +114,7 @@ async fn download_image(client: &Client, url: &str) -> Result<(Vec<u8>, ImageFor
     let bytes = resp.bytes().await?.to_vec();
 
     //info!("Image size is {}  {}", content_length, &bytes.capacity());
-    // Guess format
+
     let format = image::guess_format(&bytes)?;
 
     Ok((bytes, format))
@@ -128,7 +127,7 @@ async fn resize_and_grayscale(data: Vec<u8>, format: ImageFormat) -> Result<Vec<
         drop(img);
         let grayscale = resized.grayscale();
         drop(resized);
-        // Encode to JPEG
+
         let mut buffer = Vec::new();
         let mut cursor = Cursor::new(&mut buffer);
         grayscale.write_to(&mut cursor, ImageFormat::Jpeg)?;

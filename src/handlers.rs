@@ -1,6 +1,9 @@
 use crate::db;
 use crate::email;
-use crate::models::{AddFeedRequest, AddScheduleRequest, AppState, EmailConfig, Feed, GenerateRequest, ScheduleResponse};
+use crate::models::{
+    AddFeedRequest, AddScheduleRequest, AppState, EmailConfig, Feed, GenerateRequest,
+    ScheduleResponse,
+};
 use crate::opds;
 use crate::processor;
 use crate::scheduler;
@@ -48,12 +51,14 @@ pub async fn opds_handler(headers: HeaderMap) -> Result<impl IntoResponse, (Stat
 
 pub async fn list_downloads() -> Result<Json<Vec<String>>, (StatusCode, String)> {
     let mut files = Vec::new();
-    let mut entries = tokio::fs::read_dir(util::EPUBS_OUTPUT_DIR).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to read downloads: {}", e),
-        )
-    })?;
+    let mut entries = tokio::fs::read_dir(util::EPUBS_OUTPUT_DIR)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to read downloads: {}", e),
+            )
+        })?;
 
     while let Some(entry) = entries.next_entry().await.map_err(|e| {
         (
@@ -67,12 +72,11 @@ pub async fn list_downloads() -> Result<Json<Vec<String>>, (StatusCode, String)>
             }
         }
     }
-    // Sort by name (date) descending
+
     files.sort_by(|a, b| b.cmp(a));
     Ok(Json(files))
 }
 
-// Feed Handlers
 pub async fn list_feeds(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<Feed>>, (StatusCode, String)> {
@@ -86,7 +90,6 @@ pub async fn list_feeds(
         db::get_feeds(&db).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(Json(feeds))
 }
-
 
 pub async fn add_feed(
     State(state): State<Arc<AppState>>,
@@ -121,7 +124,6 @@ pub async fn delete_feed(
     db::delete_feed(&db, id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::NO_CONTENT)
 }
-
 
 pub async fn list_schedules(
     State(state): State<Arc<AppState>>,
@@ -162,8 +164,6 @@ pub async fn list_schedules(
 
     Ok(Json(response))
 }
-
-
 
 pub async fn add_schedule(
     State(state): State<Arc<AppState>>,
@@ -240,7 +240,6 @@ pub async fn delete_schedule(
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
 
-    // Restart scheduler
     {
         let mut sched = state.scheduler.lock().await;
         if let Err(e) = sched.shutdown().await {
@@ -267,7 +266,6 @@ pub async fn generate_handler(
 ) -> Result<StatusCode, (StatusCode, String)> {
     info!("Received request to generate EPUB");
 
-    // 1. Determine Feeds to Fetch
     let feeds_to_fetch = if payload.feeds.is_empty() {
         let db = state.db.lock().map_err(|_| {
             (
@@ -289,13 +287,13 @@ pub async fn generate_handler(
         ));
     }
 
-    // 2. Spawn Background Task
     let db_clone = state.db.clone();
     let send_email = payload.send_email;
 
     tokio::spawn(async move {
         info!("Starting background EPUB generation...");
-        match processor::generate_and_save(feeds_to_fetch, &db_clone, util::EPUBS_OUTPUT_DIR).await {
+        match processor::generate_and_save(feeds_to_fetch, &db_clone, util::EPUBS_OUTPUT_DIR).await
+        {
             Ok(filename) => {
                 info!("Background generation completed successfully: {}", filename);
                 if send_email {
@@ -308,7 +306,8 @@ pub async fn generate_handler(
 
                     match config_result {
                         Ok(Some(config)) => {
-                            let epub_path = std::path::Path::new(util::EPUBS_OUTPUT_DIR).join(&filename);
+                            let epub_path =
+                                std::path::Path::new(util::EPUBS_OUTPUT_DIR).join(&filename);
                             info!("Sending email for {}...", filename);
                             if let Err(e) = email::send_epub(&config, &epub_path).await {
                                 tracing::error!("Failed to send email: {}", e);
@@ -329,7 +328,6 @@ pub async fn generate_handler(
         }
     });
 
-    // 3. Return Accepted
     Ok(StatusCode::ACCEPTED)
 }
 
@@ -437,7 +435,7 @@ pub async fn import_opml(
                 )
             })?;
 
-             let opml_str = String::from_utf8(data.to_vec()).map_err(|e| {
+            let opml_str = String::from_utf8(data.to_vec()).map_err(|e| {
                 (
                     StatusCode::BAD_REQUEST,
                     format!("Invalid UTF-8 sequence: {}", e),
@@ -460,28 +458,18 @@ pub async fn import_opml(
 
             for outline in document.body.outlines {
                 if let Some(xml_url) = outline.xml_url {
-                     let _ = db::add_feed(
-                        &db,
-                        &xml_url,
-                        Some(&outline.text),
-                        0, 
-                    );
+                    let _ = db::add_feed(&db, &xml_url, Some(&outline.text), 0);
                 }
-                
+
                 if !outline.outlines.is_empty() {
-                     for child in outline.outlines {
+                    for child in outline.outlines {
                         if let Some(xml_url) = child.xml_url {
-                            let _ = db::add_feed(
-                                &db,
-                                &xml_url,
-                                Some(&child.text),
-                                0,
-                            );
+                            let _ = db::add_feed(&db, &xml_url, Some(&child.text), 0);
                         }
-                     }
+                    }
                 }
             }
-            
+
             return Ok(StatusCode::CREATED);
         }
     }
@@ -515,6 +503,5 @@ pub async fn auth(
         }
     }
 
-    // Return 401 WITHOUT the WWW-Authenticate header to prevent browser popup
     (StatusCode::UNAUTHORIZED, "Unauthorized".to_string()).into_response()
 }
