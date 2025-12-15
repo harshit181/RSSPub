@@ -10,14 +10,22 @@
     import EmailConfigSection from "./components/EmailConfigSection.svelte";
     import { onMount } from "svelte";
     import { api } from "./lib/api";
-    import { isAuthenticated } from "./lib/store";
+    import { isAuthenticated, authHeader, isLoginVisible } from "./lib/store";
 
     onMount(async () => {
+        window.addEventListener("unauthorized", () => {
+             isAuthenticated.set(false);
+             authHeader.set(null);
+             isLoginVisible.set(true);
+        });
+
         try {
             await api("/auth/check");
             isAuthenticated.set(true);
         } catch (e) {
             isAuthenticated.set(false);
+            authHeader.set(null);
+            isLoginVisible.set(true);
         }
     });
 </script>

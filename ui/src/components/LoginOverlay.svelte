@@ -1,58 +1,58 @@
 <script lang="ts">
-    import { authHeader, isAuthenticated, isLoginVisible } from '../lib/store';
+    import { authHeader, isAuthenticated, isLoginVisible } from "../lib/store";
 
-    let username = '';
-    let password = '';
-    let error = '';
+    let username = "";
+    let password = "";
+    let error = "";
 
     async function handleLogin() {
         if (!username || !password) return;
-        
-        const creds = 'Basic ' + btoa(username + ':' + password);
-        
+
+        const creds = "Basic " + btoa(username + ":" + password);
+
         try {
-            const res = await fetch('/auth/check', {
-                headers: { Authorization: creds }
+            const res = await fetch("/auth/check", {
+                headers: { Authorization: creds },
             });
 
             if (res.ok) {
                 authHeader.set(creds);
                 isAuthenticated.set(true);
                 isLoginVisible.set(false);
-                error = '';
+                error = "";
             } else {
-                error = 'Invalid credentials';
+                error = "Invalid credentials";
             }
         } catch (e) {
-            error = 'Login failed';
+            error = "Login failed";
         }
     }
 </script>
 
 {#if $isLoginVisible}
-<div id="login-overlay">
-    <div id="login-box">
-        <h2>Login Required</h2>
-        <form on:submit|preventDefault={handleLogin} id="login-form">
-            <input
-                type="text"
-                bind:value={username}
-                placeholder="Username"
-                required
-            />
-            <input
-                type="password"
-                bind:value={password}
-                placeholder="Password"
-                required
-            />
-            <button type="submit">Login</button>
-        </form>
-        {#if error}
-            <p id="login-error" style="color: var(--danger)">{error}</p>
-        {/if}
+    <div id="login-overlay">
+        <div id="login-box">
+            <h2>Login Required</h2>
+            <form on:submit|preventDefault={handleLogin} id="login-form">
+                <input
+                    type="text"
+                    bind:value={username}
+                    placeholder="Username"
+                    required
+                />
+                <input
+                    type="password"
+                    bind:value={password}
+                    placeholder="Password"
+                    required
+                />
+                <button class="add-btn" type="submit">Login</button>
+            </form>
+            {#if error}
+                <p id="login-error" style="color: var(--danger)">{error}</p>
+            {/if}
+        </div>
     </div>
-</div>
 {/if}
 
 <style>
@@ -66,7 +66,7 @@
         justify-content: center;
         z-index: 50;
     }
-    
+
     #login-box {
         background: var(--card-bg);
         border: 1px solid var(--card-border);
@@ -77,7 +77,7 @@
         text-align: center;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
     }
-    
+
     h2 {
         margin-bottom: 1.5rem;
     }
