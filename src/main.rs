@@ -3,6 +3,7 @@ mod email;
 mod epub_gen;
 mod epub_message;
 mod feed;
+mod handlers;
 #[cfg(feature = "mem_opt")]
 mod image;
 #[cfg(not(feature = "mem_opt"))]
@@ -11,10 +12,9 @@ mod image;
 mod models;
 mod opds;
 mod processor;
+mod routes;
 mod scheduler;
 mod util;
-mod handlers;
-mod routes;
 
 use crate::models::AppState;
 use std::net::SocketAddr;
@@ -25,6 +25,10 @@ use tracing::info;
 #[cfg(feature = "alternative-alloc")]
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
+#[allow(non_upper_case_globals)]
+#[unsafe(export_name = "malloc_conf")]
+pub static malloc_conf: &[u8] = b"prof:true,prof_active:true,lg_prof_sample:19\0";
 
 #[tokio::main]
 async fn main() {
@@ -46,7 +50,9 @@ async fn main() {
         scheduler: Arc::new(TokioMutex::new(sched)),
     });
 
-    tokio::fs::create_dir_all(util::EPUBS_OUTPUT_DIR).await.unwrap();
+    tokio::fs::create_dir_all(util::EPUBS_OUTPUT_DIR)
+        .await
+        .unwrap();
 
     let app = routes::create_router(state);
 

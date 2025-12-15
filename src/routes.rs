@@ -11,7 +11,9 @@ use tower_http::{services::ServeDir, set_header::SetResponseHeaderLayer};
 use tracing::{info, warn};
 
 pub fn create_router(state: Arc<AppState>) -> Router {
-    let public_routes = Router::new().route("/opds", get(handlers::opds_handler));
+    let public_routes = Router::new()
+        .route("/opds", get(handlers::opds_handler))
+        .route("/debug/pprof/allocs", get(handlers::handle_get_heap));
 
     let protected_routes = Router::new()
         .route("/generate", post(handlers::generate_handler))
