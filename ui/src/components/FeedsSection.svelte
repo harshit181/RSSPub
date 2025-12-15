@@ -111,21 +111,7 @@
 
 <section id="feeds-section" class="card">
     <div class="card-header">
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-        >
-            <path d="M4 11a9 9 0 0 1 9 9"></path>
-            <path d="M4 4a16 16 0 0 1 16 16"></path>
-            <circle cx="5" cy="19" r="1"></circle>
-        </svg>
+        <img src="/icons/rss.svg" alt="Feed Icon" width="20" height="20" />
         <h2>Feeds</h2>
         <input
             type="file"
@@ -149,22 +135,14 @@
         {#each $feeds as feed (feed.id)}
             <li>
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
+                    <img
+                        src="/icons/rss.svg"
+                        alt="Feed Icon"
                         width="18"
                         height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
                         class="rss-icon"
-                        style="color: var(--accent-blue); flex-shrink: 0;"
-                        ><path d="M4 11a9 9 0 0 1 9 9"></path><path
-                            d="M4 4a16 16 0 0 1 16 16"
-                        ></path><circle cx="5" cy="19" r="1"></circle></svg
-                    >
+                        style="filter: invert(36%) sepia(74%) saturate(836%) hue-rotate(185deg) brightness(97%) contrast(92%); flex-shrink: 0;"
+                    />
                     <span>
                         {feed.name || feed.url}
                         <small
