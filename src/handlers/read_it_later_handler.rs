@@ -3,6 +3,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use tracing::info;
 use axum::Json;
+use reqwest::Url;
 use crate::{db, email, processor, util};
 use crate::models::{AddReadItLaterRequest, AppState, ReadItLaterArticle, UpdateReadItLaterStatusRequest};
 
@@ -30,9 +31,24 @@ pub async fn add_read_it_later(
             "DB lock failed".to_string(),
         )
     })?;
-    db::add_read_it_later_article(&db, &payload.url)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let is_valid=is_valid_web_url(&payload.url);
+    if(is_valid) {
+        db::add_read_it_later_article(&db, &payload.url)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    }
+    else{
+       return Ok(StatusCode::BAD_REQUEST)
+    }
     Ok(StatusCode::CREATED)
+}
+
+fn is_valid_web_url(input: &str) -> bool {
+    match Url::parse(input) {
+        Ok(parsed_url) => {
+            parsed_url.scheme() == "http" || parsed_url.scheme() == "https"
+        }
+        Err(_) => false,
+    }
 }
 
 pub async fn update_read_it_later_status(
