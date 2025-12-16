@@ -156,3 +156,18 @@ pub fn delete_read_it_later_article(conn: &Connection, id: i64) -> Result<()> {
     conn.execute("DELETE FROM read_it_later WHERE id = ?1", params![id])?;
     Ok(())
 }
+
+pub fn mark_articles_as_read(conn: &Connection, ids: &[i64]) -> Result<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+
+    // Use a transaction for better performance and atomicity
+    let mut stmt = conn.prepare("UPDATE read_it_later SET read = 1 WHERE id = ?")?;
+
+    for id in ids {
+        stmt.execute(params![id])?;
+    }
+    
+    Ok(())
+}

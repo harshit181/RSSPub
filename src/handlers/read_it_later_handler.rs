@@ -88,14 +88,26 @@ pub async fn deliver_read_it_later(
             "No unread articles to deliver.".to_string(),
         ));
     }
+    let article_ids: Vec<i64> = articles.iter().filter_map(|a| a.id).collect();
 
     let db_clone = state.db.clone();
-
     tokio::spawn(async move {
         info!("Starting background Read It Later EPUB generation...");
         match processor::generate_read_it_later_epub(articles, util::EPUB_OUTPUT_DIR).await {
             Ok(filename) => {
                 info!("Background generation completed successfully: {}", filename);
+                if !article_ids.is_empty() {
+                    match db_clone.lock() {
+                        Ok(conn) => {
+                            if let Err(e) = db::mark_articles_as_read(&conn, &article_ids) {
+                                tracing::error!("Failed to mark articles as read: {}", e);
+                            } else {
+                                info!("Marked {} articles as read", article_ids.len());
+                            }
+                        }
+                        Err(_) => tracing::error!("Failed to lock DB to mark articles as read"),
+                    }
+                }
 
                match  email::check_and_send_email(db_clone, &filename).await {
                    Ok(_ok) => {}
