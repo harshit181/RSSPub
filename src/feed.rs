@@ -1,7 +1,4 @@
-use anyhow::Result;
 use chrono::{DateTime, Utc};
-use dom_smoothie::Config;
-use dom_smoothie::TextMode;
 use feed_rs::model::Feed;
 use feed_rs::parser;
 use reqwest::Client;
@@ -9,6 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Semaphore;
 use tracing::{error, info, warn};
+use crate::util;
 
 #[derive(Debug, Clone)]
 pub struct Article {
@@ -56,8 +54,8 @@ pub async fn fetch_feeds(
                         Ok(feed) => {
                             info!("Successfully fetched and parsed feed: {}", url);
                             feeds.push(FeedWrapper {
-                                feed: feed,
-                                limit: limit,
+                                feed,
+                                limit,
                             });
                         }
                         Err(e) => {
@@ -107,9 +105,9 @@ pub async fn filter_items(
         });
     }
 
-    for feedx in feeds {
-        let feed = feedx.feed;
-        let limit = feedx.limit;
+    for feed_wrapper in feeds {
+        let feed = feed_wrapper.feed;
+        let limit = feed_wrapper.limit;
         let semaphore = if limit > 0 {
             Some(Arc::new(Semaphore::new(limit)))
         } else {
@@ -150,8 +148,9 @@ pub async fn filter_items(
 
 
                         let content = if !link.is_empty() {
-                            match fetch_full_content(&client, &link).await {
-                                Ok(c) => c,
+                            match util::fetch_full_content(&client, &link).await {
+                                //should use extracted title ?
+                                Ok((_title, c)) => c,
                                 Err(e) => {
                                     error!("Error fetching full content for '{}': {}", link, e);
                                     let error_html = format!("<p style=\"color:red\"><strong>Error fetching full content:</strong> {}</p><hr/>", e);
@@ -190,17 +189,4 @@ pub async fn filter_items(
     articles.sort_by(|a, b| b.pub_date.cmp(&a.pub_date));
 
     articles
-}
-
-async fn fetch_full_content(client: &Client, url: &str) -> Result<String> {
-    let html = client.get(url).send().await?.text().await?;
-    let cfg = Config {
-        text_mode: TextMode::Markdown,
-        ..Default::default()
-    };
-    let mut readability = dom_smoothie::Readability::new(html, Some(url), Some(cfg))?;
-    let extracted = readability
-        .parse()
-        .map_err(|e| anyhow::anyhow!("DomSmoothie error: {:?}", e))?;
-    Ok(extracted.content.to_string())
 }

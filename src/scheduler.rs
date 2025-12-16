@@ -1,4 +1,4 @@
-use crate::{db, processor};
+use crate::{db, email, processor};
 use anyhow::Result;
 use rusqlite::Connection;
 use std::path::Path;
@@ -68,40 +68,16 @@ async fn run_scheduled_generation(db: Arc<Mutex<Connection>>) -> Result<()> {
         return Ok(());
     }
 
-    let filename = processor::generate_and_save(feeds, &db, crate::util::EPUBS_OUTPUT_DIR).await?;
+    let filename = processor::generate_and_save(feeds, &db, crate::util::EPUB_OUTPUT_DIR).await?;
     info!("Scheduled generation completed: {}", filename);
 
-    let send_email = {
-        let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
-        match db::get_email_config(&conn)? {
-            Some(config) => config.enable_auto_send,
-            None => false,
-        }
-    };
-
-    if send_email {
-        info!("Auto-send enabled. Sending email...");
-        
-        let config_opt = {
-            let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
-            db::get_email_config(&conn)?
-        };
-
-        if let Some(config) = config_opt {
-             let epub_path = std::path::Path::new(crate::util::EPUBS_OUTPUT_DIR).join(&filename);
-             if let Err(e) = crate::email::send_epub(&config, &epub_path).await {
-                 error!("Failed to auto-send email: {}", e);
-             } else {
-                 info!("Auto-send email sent successfully.");
-             }
-        }
-    }
+    email::check_and_send_email(db, &filename).await?;
 
     Ok(())
 }
 
 async fn cleanup_old_files() -> Result<()> {
-    let output_dir = crate::util::EPUBS_OUTPUT_DIR;
+    let output_dir = crate::util::EPUB_OUTPUT_DIR;
     if !Path::new(output_dir).exists() {
         return Ok(());
     }

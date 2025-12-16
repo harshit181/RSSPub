@@ -1,11 +1,14 @@
-use crate::models::Feed;
-use crate::{epub_gen, feed};
+use crate::models::{Feed, ReadItLaterArticle};
+use crate::{epub_gen, feed, util};
 use anyhow::Result;
-use chrono::{Duration as ChronoDuration, Utc};
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
+use reqwest::Client;
 use rusqlite::Connection;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tracing::info;
+use std::time::Duration;
+use tracing::{info, warn};
+use crate::feed::Article;
 
 pub async fn generate_epub(
     feeds: Vec<Feed>,
@@ -22,6 +25,12 @@ pub async fn generate_epub(
         return Err(anyhow::anyhow!("No articles found in the last 24 hours."));
     }
 
+    generate_epub_from_articles(output_path, &articles).await?;
+
+    Ok(())
+}
+
+async fn generate_epub_from_articles(output_path: &str, articles: &Vec<Article>) -> Result<()> {
     let temp_path = get_temp_file_path(output_path);
     info!("Generating EPUB to temporary file: {:?}", temp_path);
     let file = std::fs::File::create(&temp_path)?;
@@ -37,7 +46,6 @@ pub async fn generate_epub(
             Err(anyhow::anyhow!("Failed to generate EPUB: {}", e))
         }
     }?;
-
     Ok(())
 }
 
@@ -66,6 +74,64 @@ pub async fn generate_and_save(
     let filepath = format!("{}/{}", output_dir, filename);
 
     generate_epub(feeds, db, &filepath).await?;
-
     Ok(filename)
+}
+
+pub async fn generate_read_it_later_epub(
+    articles: Vec<ReadItLaterArticle>,
+    output_dir: &str,
+) -> Result<String> {
+    let filename = format!(
+        "read_it_later_{}.epub",
+        Utc::now().format("%Y%m%d_%H%M%S")
+    );
+    let filepath = format!("{}/{}", output_dir, filename);
+
+    info!("Fetching content for {} Read It Later articles...", articles.len());
+
+    let client = Client::builder()
+        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .timeout(Duration::from_secs(45))
+        .cookie_store(true)
+        .build()
+        .unwrap_or_else(|_| Client::new());
+
+    let mut fetched_articles = Vec::new();
+
+    fetch_all_article_with_content(articles, &client, &mut fetched_articles).await;
+
+    if fetched_articles.is_empty() {
+        return Err(anyhow::anyhow!("No content could be fetched."));
+    }
+    generate_epub_from_articles(&filepath, &fetched_articles).await?;
+    Ok(filename)
+}
+
+async fn fetch_all_article_with_content(articles: Vec<ReadItLaterArticle>, client: &Client, fetched_articles: &mut Vec<Article>) {
+    for article in articles {
+        info!("Fetching: {}", article.url);
+        match util::fetch_full_content(&client, &article.url).await {
+            Ok((title, content)) => {
+                fetched_articles.push(crate::feed::Article {
+                    title,
+                    link: article.url.clone(),
+                    content,
+                    pub_date: DateTime::parse_from_rfc3339(&article.created_at)
+                        .map(|dt| dt.with_timezone(&Utc))
+                        .unwrap_or_else(|_| Utc::now()),
+                    source: "Read It Later".to_string(),
+                });
+            }
+            Err(e) => {
+                warn!("Failed to fetch {}: {}", article.url, e);
+                fetched_articles.push(crate::feed::Article {
+                    title: format!("Error: {}", article.url),
+                    link: article.url.clone(),
+                    content: format!("<p>Failed to fetch content: {}</p>", e),
+                    pub_date: Utc::now(),
+                    source: "Read It Later Errors".to_string(),
+                });
+            }
+        }
+    }
 }

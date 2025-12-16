@@ -39,8 +39,6 @@ pub struct AppState {
 pub struct GenerateRequest {
     #[serde(default)]
     pub feeds: Vec<Feed>,
-    #[serde(default)]
-    pub send_email: bool,
 }
 
 #[derive(Deserialize)]
@@ -63,4 +61,21 @@ pub struct AddScheduleRequest {
     pub hour: u32,
     pub minute: u32,
     pub timezone: String,
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ReadItLaterArticle {
+    pub id: Option<i64>,
+    pub url: String,
+    pub read: bool,
+    pub created_at: String,
+}
+
+#[derive(Deserialize)]
+pub struct AddReadItLaterRequest {
+    pub url: String,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateReadItLaterStatusRequest {
+    pub read: bool,
 }

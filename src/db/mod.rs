@@ -1,67 +1,9 @@
 use chrono::Utc;
 use rusqlite::{params, Connection, Result};
 
-use crate::models::{EmailConfig, Feed, Schedule};
+use crate::models::{EmailConfig, Feed, ReadItLaterArticle, Schedule};
 
-pub fn init_db(path: &str) -> Result<Connection> {
-    let conn = Connection::open(path)?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS feeds (
-            id INTEGER PRIMARY KEY,
-            url TEXT NOT NULL UNIQUE,
-            name TEXT,
-            concurrency_limit INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL
-        )",
-        [],
-    )?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS schedules (
-            id INTEGER PRIMARY KEY,
-            cron_expression TEXT NOT NULL,
-            active BOOLEAN NOT NULL DEFAULT 1,
-            created_at TEXT NOT NULL
-        )",
-        [],
-    )?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS email_config (
-            id INTEGER PRIMARY KEY CHECK (id = 1),
-            smtp_host TEXT NOT NULL,
-            smtp_port INTEGER NOT NULL,
-            smtp_password TEXT NOT NULL,
-            email_address TEXT NOT NULL,
-            to_email TEXT NOT NULL,
-            enable_auto_send BOOLEAN NOT NULL DEFAULT 0
-        )",
-        [],
-    )?;
-
-    {
-        let mut stmt = conn.prepare("PRAGMA table_info(email_config)")?;
-        let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
-        let mut has_column = false;
-        for row in rows {
-            if row? == "enable_auto_send" {
-                has_column = true;
-                break;
-            }
-        }
-
-        if !has_column {
-            conn.execute(
-                "ALTER TABLE email_config ADD COLUMN enable_auto_send BOOLEAN NOT NULL DEFAULT 0",
-                [],
-            )?;
-        }
-    }
-
-    Ok(conn)
-}
-
+pub mod schema_init;
 
 pub fn add_feed(
     conn: &Connection,
@@ -164,5 +106,68 @@ pub fn save_email_config(conn: &Connection, config: &EmailConfig) -> Result<()> 
             config.enable_auto_send
         ],
     )?;
+    Ok(())
+}
+
+pub fn add_read_it_later_article(conn: &Connection, url: &str) -> Result<()> {
+    conn.execute(
+        "INSERT OR IGNORE INTO read_it_later (url, created_at) VALUES (?1, ?2)",
+        params![url, Utc::now().to_rfc3339()],
+    )?;
+    Ok(())
+}
+
+pub fn get_read_it_later_articles(
+    conn: &Connection,
+    unread_only: bool,
+) -> Result<Vec<ReadItLaterArticle>> {
+    let mut query = "SELECT id, url, read, created_at FROM read_it_later".to_string();
+    if unread_only {
+        query.push_str(" WHERE read = 0");
+    }
+    query.push_str(" ORDER BY created_at DESC");
+
+    let mut stmt = conn.prepare(&query)?;
+    let article_iter = stmt.query_map([], |row| {
+        Ok(ReadItLaterArticle {
+            id: Some(row.get(0)?),
+            url: row.get(1)?,
+            read: row.get(2)?,
+            created_at: row.get(3)?,
+        })
+    })?;
+
+    let mut articles = Vec::new();
+    for article in article_iter {
+        articles.push(article?);
+    }
+    Ok(articles)
+}
+
+pub fn update_read_it_later_status(conn: &Connection, id: i64, read: bool) -> Result<()> {
+    conn.execute(
+        "UPDATE read_it_later SET read = ?1 WHERE id = ?2",
+        params![read, id],
+    )?;
+    Ok(())
+}
+
+pub fn delete_read_it_later_article(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute("DELETE FROM read_it_later WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
+pub fn mark_articles_as_read(conn: &Connection, ids: &[i64]) -> Result<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+
+    // Use a transaction for better performance and atomicity
+    let mut stmt = conn.prepare("UPDATE read_it_later SET read = 1 WHERE id = ?")?;
+
+    for id in ids {
+        stmt.execute(params![id])?;
+    }
+    
     Ok(())
 }
