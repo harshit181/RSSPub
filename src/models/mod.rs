@@ -39,8 +39,6 @@ pub struct AppState {
 pub struct GenerateRequest {
     #[serde(default)]
     pub feeds: Vec<Feed>,
-    #[serde(default)]
-    pub send_email: bool,
 }
 
 #[derive(Deserialize)]

@@ -80,7 +80,7 @@ pub async fn generate_and_save(
 pub async fn generate_read_it_later_epub(
     articles: Vec<ReadItLaterArticle>,
     output_dir: &str,
-) -> Result<(String)> {
+) -> Result<String> {
     let filename = format!(
         "read_it_later_{}.epub",
         Utc::now().format("%Y%m%d_%H%M%S")

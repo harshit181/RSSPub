@@ -118,7 +118,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         current_seq = 0;
         let total_images = &counter_again.load(Ordering::Relaxed);
         info!("Total images are {}", &total_images);
-        if (total_images> &0){
+        if total_images> &0{
         let pb_images = ProgressBar::new(*total_images as u64);
         pb_images.set_style(ProgressStyle::default_bar()
             .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta}) Images")

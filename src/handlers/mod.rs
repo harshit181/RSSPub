@@ -1,25 +1,12 @@
-use crate::db;
-use crate::email;
-use crate::models::{
-    AddFeedRequest, AddReadItLaterRequest, AddScheduleRequest, AppState, EmailConfig, Feed,
-    GenerateRequest, ReadItLaterArticle, ScheduleResponse, UpdateReadItLaterStatusRequest,
-};
 use crate::opds;
-use crate::processor;
-use crate::scheduler;
 use crate::util;
 use axum::{
-    extract::{Json, Multipart, Path, State},
+    extract::{ Multipart},
     http::{header, HeaderMap, StatusCode},
     response::IntoResponse,
 };
-use base64::Engine;
-use chrono::{Local, Timelike};
-use chrono_tz::Tz;
-
-use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
-use tracing::{info, warn};
+use tracing::{info};
 
 pub mod download_handler;
 pub mod feed_handler;

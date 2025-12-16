@@ -96,26 +96,11 @@ pub async fn deliver_read_it_later(
         match processor::generate_read_it_later_epub(articles, util::EPUB_OUTPUT_DIR).await {
             Ok(filename) => {
                 info!("Background generation completed successfully: {}", filename);
-                let config_result = {
-                    let db = db_clone.lock().unwrap();
-                    db::get_email_config(&db)
-                };
 
-                match config_result {
-                    Ok(Some(config)) => {
-                        let epub_path = std::path::Path::new(util::EPUB_OUTPUT_DIR).join(&filename);
-                        info!("Sending email for {}...", filename);
-                        if let Err(e) = email::send_epub(&config, &epub_path).await {
-                            tracing::error!("Failed to send email: {}", e);
-                        }
-                    }
-                    Ok(None) => {
-                        tracing::warn!("Email sending requested but no email config found.");
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to fetch email config: {}", e);
-                    }
-                }
+               match  email::check_and_send_email(db_clone, &filename).await {
+                   Ok(_ok) => {}
+                   Err(_error) => {}
+               }
             }
             Err(e) => {
                 tracing::error!("Failed to generate EPUB: {}", e);

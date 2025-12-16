@@ -2,7 +2,7 @@ use crate::handlers;
 use crate::models::AppState;
 use axum::{
     http::{header, StatusCode},
-    routing::{delete, get, patch, post},
+    routing::{delete, get, post},
     Router,
 };
 use std::sync::Arc;

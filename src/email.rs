@@ -8,8 +8,11 @@ use lettre::Tokio1Executor;
 use lettre::{AsyncTransport, Message};
 use std::fs;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tracing::{error, info};
+use rusqlite::Connection;
+use crate::db;
 
 pub async fn send_epub(config: &EmailConfig, epub_path: &Path) -> Result<()> {
     info!("Preparing to send email to {}", config.to_email);
@@ -69,5 +72,34 @@ pub async fn send_epub(config: &EmailConfig, epub_path: &Path) -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+pub async fn check_and_send_email(db: Arc<Mutex<Connection>>, filename: &String) -> Result<()> {
+    let send_email = {
+        let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
+        match db::get_email_config(&conn)? {
+            Some(config) => config.enable_auto_send,
+            None => false,
+        }
+    };
+
+    if send_email {
+        info!("Auto-send enabled. Sending email...");
+
+        let config_opt = {
+            let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
+            db::get_email_config(&conn)?
+        };
+
+        if let Some(config) = config_opt {
+            let epub_path = std::path::Path::new(crate::util::EPUB_OUTPUT_DIR).join(&filename);
+            if let Err(e) = send_epub(&config, &epub_path).await {
+                error!("Failed to auto-send email: {}", e);
+            } else {
+                info!("Auto-send email sent successfully.");
+            }
+        }
+    }
     Ok(())
 }

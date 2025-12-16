@@ -1,7 +1,4 @@
-use anyhow::Result;
 use chrono::{DateTime, Utc};
-use dom_smoothie::Config;
-use dom_smoothie::TextMode;
 use feed_rs::model::Feed;
 use feed_rs::parser;
 use reqwest::Client;

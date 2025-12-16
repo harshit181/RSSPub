@@ -170,9 +170,7 @@
     .title {
         font-weight: 500;
         margin-bottom: 0.25rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        word-break: break-all;
     }
 
     .meta {
