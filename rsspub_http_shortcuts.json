@@ -1,0 +1,39 @@
+{
+  "categories": [
+    {
+      "id": "3e9677fc-b081-4eae-a661-feb946cf3da4",
+      "name": "RSSpub share",
+      "shortcuts": [
+        {
+          "authentication": "basic",
+          "bodyContent": "{\"url\":\"{{578b76c4-263e-4676-8c84-00b5e49de6e5}}\"}",
+          "contentType": "application/json",
+          "iconName": "flat_color_lightbulb",
+          "id": "c295a489-0305-4683-8758-de5a60d1b739",
+          "method": "POST",
+          "name": "rsspub",
+          "password": "yourpassword",
+          "responseHandling": {
+            "actions": ["share"]
+          },
+          "timeout": 5000,
+          "url": "http://yourhost:3000/read-it-later",
+          "username": "yourusername"
+        }
+      ]
+    }
+  ],
+  "compatibilityVersion": 90,
+  "createdAt": "2025-12-16T16:30:42.926085Z",
+  "originDeviceId": "FY88GGCFTB",
+  "variables": [
+    {
+      "id": "578b76c4-263e-4676-8c84-00b5e49de6e5",
+      "isShareText": true,
+      "jsonEncode": true,
+      "key": "text",
+      "type": "text"
+    }
+  ],
+  "version": 91
+}

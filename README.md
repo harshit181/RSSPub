@@ -141,7 +141,9 @@ You can easily add articles from your Android phone using the [HTTP Shortcuts](h
     -   When browsing an article in Chrome or any app, tap **Share**.
     -   Select **HTTP Shortcuts**.
     -   Select your **Add to rsspub** shortcut.
-<s>
+** Added sample rsspub_http_shortcuts.json which can be imported in the app **
+     <s>
+    
 ### Building with Optimization (Optional) 
 
 For better memory usage during image processing (recommended for low-memory devices), you can enable the `mem_opt` feature (requires `libvips` installed on your system):
