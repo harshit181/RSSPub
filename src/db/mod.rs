@@ -3,76 +3,7 @@ use rusqlite::{params, Connection, Result};
 
 use crate::models::{EmailConfig, Feed, ReadItLaterArticle, Schedule};
 
-pub fn init_db(path: &str) -> Result<Connection> {
-    let conn = Connection::open(path)?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS feeds (
-            id INTEGER PRIMARY KEY,
-            url TEXT NOT NULL UNIQUE,
-            name TEXT,
-            concurrency_limit INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL
-        )",
-        [],
-    )?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS schedules (
-            id INTEGER PRIMARY KEY,
-            cron_expression TEXT NOT NULL,
-            active BOOLEAN NOT NULL DEFAULT 1,
-            created_at TEXT NOT NULL
-        )",
-        [],
-    )?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS email_config (
-            id INTEGER PRIMARY KEY CHECK (id = 1),
-            smtp_host TEXT NOT NULL,
-            smtp_port INTEGER NOT NULL,
-            smtp_password TEXT NOT NULL,
-            email_address TEXT NOT NULL,
-            to_email TEXT NOT NULL,
-            enable_auto_send BOOLEAN NOT NULL DEFAULT 0
-        )",
-        [],
-    )?;
-
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS read_it_later (
-            id INTEGER PRIMARY KEY,
-            url TEXT NOT NULL UNIQUE,
-            title TEXT,
-            read BOOLEAN NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL
-        )",
-        [],
-    )?;
-
-    {
-        let mut stmt = conn.prepare("PRAGMA table_info(email_config)")?;
-        let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
-        let mut has_column = false;
-        for row in rows {
-            if row? == "enable_auto_send" {
-                has_column = true;
-                break;
-            }
-        }
-
-        if !has_column {
-            conn.execute(
-                "ALTER TABLE email_config ADD COLUMN enable_auto_send BOOLEAN NOT NULL DEFAULT 0",
-                [],
-            )?;
-        }
-    }
-
-    Ok(conn)
-}
-
+pub mod schema_init;
 
 pub fn add_feed(
     conn: &Connection,

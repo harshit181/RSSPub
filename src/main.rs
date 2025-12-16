@@ -21,6 +21,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tokio::sync::Mutex as TokioMutex;
 use tracing::info;
+use db::schema_init;
 
 #[cfg(feature = "alternative-alloc")]
 #[global_allocator]
@@ -35,7 +36,7 @@ async fn main() {
 
     tracing_subscriber::fmt().init();
 
-    let conn = db::init_db("./db/rpub.db").expect("Failed to initialize database");
+    let conn = schema_init::init_db("./db/rpub.db").expect("Failed to initialize database");
     let db_mutex = Arc::new(Mutex::new(conn));
     let sched = scheduler::init_scheduler(db_mutex.clone())
         .await

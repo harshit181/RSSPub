@@ -11,3 +11,4 @@ vncmain.sh
 /static/index.html
 /static/ebo.svg
 /static/icons
+.env
