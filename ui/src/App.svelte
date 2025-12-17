@@ -38,6 +38,7 @@
 <LoginOverlay />
 <Popup />
 
+
 {#if $isAuthenticated}
     <div class="container">
         <Header />

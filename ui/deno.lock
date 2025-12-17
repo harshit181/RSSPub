@@ -4,8 +4,10 @@
     "npm:@sveltejs/vite-plugin-svelte@^6.2.1": "6.2.1_svelte@5.46.0__acorn@8.15.0_vite@7.3.0__@types+node@24.10.4__picomatch@4.0.3_@types+node@24.10.4",
     "npm:@tsconfig/svelte@^5.0.6": "5.0.6",
     "npm:@types/node@^24.10.1": "24.10.4",
+    "npm:svelte-check@*": "4.3.4_svelte@5.46.0__acorn@8.15.0_typescript@5.9.3",
     "npm:svelte-check@^4.3.4": "4.3.4_svelte@5.46.0__acorn@8.15.0_typescript@5.9.3",
     "npm:svelte@^5.43.8": "5.46.0_acorn@8.15.0",
+    "npm:typescript@*": "5.9.3",
     "npm:typescript@~5.9.3": "5.9.3",
     "npm:vite@*": "7.3.0_@types+node@24.10.4_picomatch@4.0.3",
     "npm:vite@^7.2.4": "7.3.0_@types+node@24.10.4_picomatch@4.0.3"

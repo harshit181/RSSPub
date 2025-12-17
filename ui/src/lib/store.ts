@@ -28,9 +28,15 @@ export const popup = writable<{
   title: string;
   message: string;
   isError: boolean;
+  type: "alert" | "confirm";
+  onConfirm: () => void;
+  onCancel: () => void;
 }>({
   visible: false,
   title: "",
   message: "",
   isError: false,
+  type: "alert",
+  onConfirm: () => { },
+  onCancel: () => { },
 });

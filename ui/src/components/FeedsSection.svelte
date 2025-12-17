@@ -45,19 +45,28 @@
         }
     }
 
-    async function deleteFeed(id: number) {
-        if (!confirm("Delete this feed?")) return;
-        try {
-            await api(`/feeds/${id}`, "DELETE");
-            loadFeeds();
-        } catch (e: any) {
-            popup.set({
-                visible: true,
-                title: "Error",
-                message: e.message,
-                isError: true,
-            });
-        }
+    function deleteFeed(id: number) {
+        popup.set({
+            visible: true,
+            title: "Confirm Deletion",
+            message: "Delete this feed?",
+            isError: false,
+            type: "confirm",
+            onConfirm: async () => {
+                try {
+                    await api(`/feeds/${id}`, "DELETE");
+                    loadFeeds();
+                } catch (e: any) {
+                    popup.set({
+                        visible: true,
+                        title: "Error",
+                        message: e.message,
+                        isError: true,
+                    });
+                }
+            },
+            onCancel: () => {},
+        });
     }
 
     async function importOpml(event: Event) {

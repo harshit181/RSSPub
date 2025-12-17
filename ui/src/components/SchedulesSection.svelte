@@ -88,19 +88,28 @@
         }
     }
 
-    async function deleteSchedule(id: number) {
-        if (!confirm("Delete this schedule?")) return;
-        try {
-            await api(`/schedules/${id}`, "DELETE");
-            loadSchedules();
-        } catch (e: any) {
-            popup.set({
-                visible: true,
-                title: "Error",
-                message: e.message,
-                isError: true,
-            });
-        }
+    function deleteSchedule(id: number) {
+        popup.set({
+            visible: true,
+            title: "Confirm Deletion",
+            message: "Delete this schedule?",
+            isError: false,
+            type: "confirm",
+            onConfirm: async () => {
+                try {
+                    await api(`/schedules/${id}`, "DELETE");
+                    loadSchedules();
+                } catch (e: any) {
+                    popup.set({
+                        visible: true,
+                        title: "Error",
+                        message: e.message,
+                        isError: true,
+                    });
+                }
+            },
+            onCancel: () => {},
+        });
     }
 
     function formatCron(schedule: any) {

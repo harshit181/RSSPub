@@ -57,20 +57,29 @@
         }
     }
 
-    async function deleteArticle(id: number) {
-        if (!confirm("Are you sure?")) return;
-        try {
-            await api(`/read-it-later/${id}`, "DELETE");
-            await loadArticles();
-        } catch (e) {
-            console.error(e);
-            popup.set({
-                visible: true,
-                title: "Failed to delete articles",
-                message: "Failed to delete articles",
-                isError: true,
-            });
-        }
+    function deleteArticle(id: number) {
+        popup.set({
+            visible: true,
+            title: "Confirm Deletion",
+            message: "Are you sure you want to delete this article?",
+            isError: false,
+            type: "confirm",
+            onConfirm: async () => {
+                try {
+                    await api(`/read-it-later/${id}`, "DELETE");
+                    await loadArticles();
+                } catch (e) {
+                    console.error(e);
+                    popup.set({
+                        visible: true,
+                        title: "Failed to delete articles",
+                        message: "Failed to delete articles",
+                        isError: true,
+                    });
+                }
+            },
+            onCancel: () => {},
+        });
     }
 
     async function deliverNow() {
