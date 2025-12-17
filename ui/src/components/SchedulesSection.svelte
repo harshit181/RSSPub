@@ -5,6 +5,9 @@
     let hour = "";
     let minute = "";
     let scheduleType = "rss";
+    let frequency = "daily";
+    let dayOfWeek = "0";
+    let dayOfMonth = "1";
     let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     const hours = Array.from({ length: 24 }, (_, i) =>
@@ -14,6 +17,18 @@
         (i * 5).toString().padStart(2, "0"),
     );
     const timezones = Intl.supportedValuesOf("timeZone");
+
+    const daysOfWeek = [
+        { val: "0", label: "Monday" },
+        { val: "1", label: "Tuesday" },
+        { val: "2", label: "Wednesday" },
+        { val: "3", label: "Thursday" },
+        { val: "4", label: "Friday" },
+        { val: "5", label: "Saturday" },
+        { val: "6", label: "Sunday" },
+    ];
+    
+    const daysOfMonth = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 
     onMount(() => {
         const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -40,19 +55,28 @@
             popup.set({
                 visible: true,
                 title: "Missing Information",
-                message: "Please select Hour, Minute, Timezone, and Type.",
+                message: "Please select Time, Timezone, and Type.",
                 isError: true,
             });
             return;
         }
 
+        const payload: any = {
+            hour: parseInt(hour, 10),
+            minute: parseInt(minute, 10),
+            timezone,
+            schedule_type: scheduleType,
+            frequency,
+        };
+        
+        if (frequency === "weekly") {
+            payload.day_of_week = parseInt(dayOfWeek, 10);
+        } else if (frequency === "monthly") {
+            payload.day_of_month = parseInt(dayOfMonth, 10);
+        }
+
         try {
-            await api("/schedules", "POST", {
-                hour: parseInt(hour, 10),
-                minute: parseInt(minute, 10),
-                timezone,
-                schedule_type: scheduleType,
-            });
+            await api("/schedules", "POST", payload);
             loadSchedules();
         } catch (e: any) {
             popup.set({
@@ -79,17 +103,31 @@
         }
     }
 
-    function formatSchedule(timeStr: string) {
-        try {
-            const date = new Date(timeStr);
-            return new Intl.DateTimeFormat("default", {
-                hour: "numeric",
-                minute: "numeric",
-                timeZoneName: "short",
-            }).format(date);
-        } catch (e) {
-            return timeStr;
+    function formatCron(schedule: any) {
+        const cron = schedule.cron_expression;
+        if (!cron) return "Unknown";
+        
+        const parts = cron.split(" ");
+        if (parts.length < 5) return cron;
+
+        const min = parts[1].padStart(2, "0");
+        const hour = parts[2].padStart(2, "0");
+        const dom = parts[3];
+        const dow = parts[5];
+        
+        const timeStr = `${hour}:${min}`;
+        
+        if (dom === "*" && dow === "*") {
+            return `Daily at ${timeStr}`;
+        } else if (dom === "*" && dow !== "*") {
+             const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+             const d = parseInt(dow, 10);
+             const dayName = !isNaN(d) && days[d] ? days[d] : dow;
+             return `Weekly on ${dayName} at ${timeStr}`;
+        } else if (dom !== "*" && dow === "*") {
+             return `Monthly on day ${dom} at ${timeStr}`;
         }
+        return cron;
     }
 </script>
 
@@ -107,7 +145,7 @@
         {#each $schedules as schedule (schedule.id)}
             <li>
                 <div class="schedule-info">
-                    <span class="schedule-time">{formatSchedule(schedule.time)}</span>
+                    <span class="schedule-time">{formatCron(schedule)}</span>
                     <span class="schedule-type-badge">{schedule.schedule_type || 'rss'}</span>
                 </div>
                 <button
@@ -118,6 +156,27 @@
         {/each}
     </ul>
     <form on:submit|preventDefault={addSchedule} id="add-schedule-form">
+        <div class="frequency-row" style="margin-bottom: 0.5rem;">
+            <select bind:value={frequency}>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+            </select>
+            {#if frequency === "weekly"}
+                <select bind:value={dayOfWeek}>
+                    {#each daysOfWeek as d}
+                        <option value={d.val}>{d.label}</option>
+                    {/each}
+                </select>
+            {/if}
+            {#if frequency === "monthly"}
+                <select bind:value={dayOfMonth}>
+                    {#each daysOfMonth as d}
+                        <option value={d}>{d}</option>
+                    {/each}
+                </select>
+            {/if}
+        </div>
         <div class="time-row">
             <select bind:value={hour} required>
                 <option value="" disabled selected>00</option>
@@ -141,7 +200,7 @@
                 <option value="rss">RSS Generator</option>
                 <option value="read_it_later">Read It Later</option>
             </select>
-            <button type="submit" class="add-btn"> Add Schedule </button>
+            <button type="submit" class="add-btn"> Add </button>
         </div>
     </form>
 </section>

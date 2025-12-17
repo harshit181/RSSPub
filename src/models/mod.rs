@@ -61,6 +61,7 @@ pub struct ScheduleResponse {
     pub time: String,
     pub active: bool,
     pub schedule_type: String,
+    pub cron_expression: String,
 }
 
 #[derive(Deserialize)]
@@ -70,6 +71,14 @@ pub struct AddScheduleRequest {
     pub timezone: String,
     #[serde(default = "default_schedule_type")]
     pub schedule_type: String,
+    #[serde(default = "default_frequency")]
+    pub frequency: String,
+    pub day_of_week: Option<u32>,
+    pub day_of_month: Option<u32>,
+}
+
+fn default_frequency() -> String {
+    "daily".to_string()
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ReadItLaterArticle {

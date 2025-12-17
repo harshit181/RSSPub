@@ -3,7 +3,7 @@ use axum::extract::{Path, State};
 use axum::Json;
 use axum::http::StatusCode;
 use chrono_tz::Tz;
-use chrono::{Local, Timelike};
+use chrono::{Local, Timelike, Datelike};
 use tracing::{info, warn};
 use crate::{db, scheduler};
 use crate::models::{AddScheduleRequest, AppState, ScheduleResponse};
@@ -33,6 +33,7 @@ pub async fn list_schedules(
                             time: local_dt.to_rfc3339(),
                             active: s.active,
                             schedule_type: s.schedule_type,
+                            cron_expression: s.cron_expression.clone(),
                         });
                         continue;
                     }
@@ -71,7 +72,32 @@ pub async fn add_schedule(
     let server_hour = target_in_server.hour();
     let server_minute = target_in_server.minute();
 
-    let cron_expression = format!("0 {} {} * * *", server_minute, server_hour);
+    let cron_expression = match payload.frequency.as_str() {
+        "weekly" => {
+            let day = payload.day_of_week.ok_or((StatusCode::BAD_REQUEST, "Missing day of week".to_string()))?;
+            let mut current = target_time_in_tz;
+            let target_weekday = chrono::Weekday::try_from(day as u8).map_err(|_| (StatusCode::BAD_REQUEST, "Invalid day of week".to_string()))?;
+            while current.weekday() != target_weekday {
+                current = current + chrono::Duration::days(1);
+            }
+            let target_in_server = current.with_timezone(&Local);
+            format!("0 {} {} * * {}", target_in_server.minute(), target_in_server.hour(), target_in_server.weekday().num_days_from_sunday())
+        },
+        "monthly" => {
+            let day = payload.day_of_month.ok_or((StatusCode::BAD_REQUEST, "Missing day of month".to_string()))?;
+            let current = target_time_in_tz;
+             let candidate = current.date_naive().with_day(day);
+            if candidate.is_none() {
+                 return Err((StatusCode::BAD_REQUEST, "Invalid day of month for current month".to_string()));
+            }
+            let dt = candidate.unwrap().and_time(current.time()).and_local_timezone(tz).unwrap();
+            let target_in_server = dt.with_timezone(&Local);
+            format!("0 {} {} {} * *", target_in_server.minute(), target_in_server.hour(), target_in_server.day())
+        },
+        _ => {
+             format!("0 {} {} * * *", server_minute, server_hour)
+        }
+    };
 
     info!(
         "Converting {} {:02}:{:02} -> Server {:02}:{:02} (Cron: {})",
