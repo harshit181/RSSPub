@@ -36,7 +36,6 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 ### Prerequisites
 
 - Rust (latest stable)
-- `sqlite3` (usually included in most OS)
 - (Optional) `libvips` if using the `mem_opt` feature for optimized image processing.
 
 ### Installation
