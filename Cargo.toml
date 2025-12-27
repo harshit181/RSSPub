@@ -18,7 +18,7 @@ tower = { version = "0.5.2", features = ["util"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 dom_smoothie = "0.14.0"
-rusqlite = { version = "0.37", features = ["bundled"] }
+rusqlite = { version = "0.38", features = ["bundled"] }
 tokio-cron-scheduler = "0.15.1"
 opml = "1.1.6"
 lettre = { version = "0.11.19",default-features = false, features = ["tokio1", "tokio1-rustls-tls", "smtp-transport","builder"] }
