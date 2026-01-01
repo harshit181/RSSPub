@@ -25,7 +25,7 @@ pub fn get_feeds(conn: &Connection) -> Result<Vec<Feed>> {
             id: Some(row.get(0)?),
             url: row.get(1)?,
             name: row.get(2)?,
-            concurrency_limit: row.get(3)?,
+            concurrency_limit: row.get(3)? ,
         })
     })?;
 
