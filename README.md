@@ -14,7 +14,7 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 - [x] Add email send option for Kindle
 - [x] Add basic Read it later feature.
 - [ ] Make it multi-platform via Tauri or Dioxus
-- [x] Add user defined custom article extraction logic via <s>Scrapper</s> dom_query crate
+- [x] Add user defined custom article extraction logic via <s>Scrapper</s> [dom_query](https://github.com/niklak/dom_query) crate
     - [ ] add deduplication logic for Custom Extractor
 - [x] Add configuration for few of the hardcoded settings
 - [ ] Cleanup unused/unnecessary features
@@ -180,8 +180,8 @@ output_mode: html
 - `discard` (optional): Array of CSS selectors for elements to remove from the extracted content.
 - `output_mode` (optional): Output format - `html` (default) or `text`.   
 
-     <s>
-    
+     
+<s>    
 ### Building with Optimization (Optional) 
 
 For better memory usage during image processing (recommended for low-memory devices), you can enable the `mem_opt` feature (requires `libvips` installed on your system):
