@@ -15,7 +15,8 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 - [x] Add basic Read it later feature.
 - [ ] Make it multi-platform via Tauri or Dioxus
 - [x] Add user defined custom article extraction logic via <s>Scrapper</s> [dom_query](https://github.com/niklak/dom_query) crate
-    - [ ] add deduplication logic for Custom Extractor
+    - [x] add deduplication logic for Custom Extractor
+    - [ ] add another option to fetch content from rss itself
 - [x] Add configuration for few of the hardcoded settings
 - [ ] Cleanup unused/unnecessary features
 

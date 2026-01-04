@@ -1,4 +1,4 @@
-use crate::models::{CustomExtractorConfig, FeedProcessor, ProcessorType};
+use crate::models::{CustomExtractorConfig, FeedProcessor, OutputMode, ProcessorType};
 use dom_query::Document;
 use dom_smoothie::{CandidateSelectMode, Config, TextMode};
 use reqwest::Client;
@@ -54,7 +54,7 @@ impl CustomExtractor {
 
 impl ContentExtractor for CustomExtractor {
     fn extract(&self, html: &str, _url: &str) -> anyhow::Result<(String, String)> {
-        let use_text_mode = self.config.output_mode.to_lowercase() == "text";
+        let use_text_mode = self.config.output_mode == OutputMode::Text;
 
         let document = Document::from(html);
 
@@ -68,27 +68,23 @@ impl ContentExtractor for CustomExtractor {
         let doc = Document::from(cleaned_html.as_str());
         let discard_selector =&self.config.discard.join(", ");
         let selector =&self.config.selector.join(", ");
-        doc.select(discard_selector).remove();
         match doc.try_select(discard_selector) {
             None => {}
             Some(dd) => {dd.remove()}
         };
-        let selected_content=doc.try_select(selector);
+        let mut selected_content =doc.try_select(selector);
         let mut content=String::new();
 
-        match selected_content {
-            None => {return Err(anyhow::anyhow!("Not able to extract content via Yaml config "));},
-            Some(selected) => {
-                if use_text_mode {
-                    content=selected.text().to_string();
-                }
-                else{
-                    for x in selected.iter() {
-                        content=format!("{} {}",content,x.html().to_string());
-                    }
-
-                }
+        while let Some(selected) =selected_content{
+            if use_text_mode {
+                content=selected.text().to_string();
             }
+            else{
+                let temp=selected.html().to_string();
+                content=format!("{} {}",content,temp);
+            }
+            selected.select(selector).remove();
+            selected_content=selected.try_select(selector);
         }
         let content=content.to_string();
 

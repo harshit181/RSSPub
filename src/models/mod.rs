@@ -148,16 +148,25 @@ pub struct FeedProcessor {
     pub custom_config: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum OutputMode {
+    Text,
+    Html,
+}
+
+impl Default for OutputMode {
+    fn default() -> Self {
+        OutputMode::Html
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CustomExtractorConfig {
     #[serde(default)]
     pub selector: Vec<String>,
     #[serde(default)]
     pub discard: Vec<String>,
-    #[serde(default = "default_output_mode")]
-    pub output_mode: String,
-}
-
-fn default_output_mode() -> String {
-    "html".to_string()
+    #[serde(default)]
+    pub output_mode: OutputMode,
 }
