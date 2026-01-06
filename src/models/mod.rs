@@ -119,6 +119,7 @@ pub enum ProcessorType {
     Default = 1,
     DomSmoothie = 2,
     Custom = 3,
+    TextOnly = 4,
 }
 
 impl Default for ProcessorType {
@@ -132,6 +133,7 @@ impl ProcessorType {
         match value {
             2 => ProcessorType::DomSmoothie,
             3 => ProcessorType::Custom,
+            4 => ProcessorType::TextOnly,
             _ => ProcessorType::Default,
         }
     }

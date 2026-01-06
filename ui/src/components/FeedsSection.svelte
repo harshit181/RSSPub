@@ -317,6 +317,7 @@
             <select bind:value={processor}>
                 <option value="default">Default</option>
                 <option value="dom_smoothie">DomSmoothie</option>
+                <option value="text_only">Text Only (No Images)</option>
                 <option value="custom">Custom (Experimental)</option>
             </select>
             <button type="submit" class="add-btn" disabled={!isAddFormValid}> Add Feed </button>
@@ -353,6 +354,7 @@ output_mode: html"
                 <select bind:value={editProcessor}>
                     <option value="default">Default</option>
                     <option value="dom_smoothie">DomSmoothie</option>
+                    <option value="text_only">Text Only (No Images)</option>
                     <option value="custom">Custom (Experimental)</option>
                 </select>
             </div>

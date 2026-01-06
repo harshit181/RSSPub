@@ -40,6 +40,30 @@ impl ContentExtractor for DomSmoothieExtractor {
     }
 }
 
+pub struct TextOnlyExtractor;
+
+impl ContentExtractor for TextOnlyExtractor {
+    fn extract(&self, html: &str, url: &str) -> anyhow::Result<(String, String)> {
+        let cfg = Config {
+            text_mode: TextMode::Markdown,
+            candidate_select_mode: CandidateSelectMode::DomSmoothie,
+            ..Default::default()
+        };
+        let mut readability = dom_smoothie::Readability::new(html, Some(url), Some(cfg))?;
+        let extracted = readability
+            .parse()
+            .map_err(|e| anyhow::anyhow!("TextOnly error: {:?}", e))?;
+        
+        let content_html = extracted.content.to_string();
+        let doc = Document::from(content_html.as_str());
+        if let Some(images) = doc.try_select("img") {
+            images.remove();
+        }
+        
+        Ok((extracted.title, doc.html().to_string()))
+    }
+}
+
 pub struct CustomExtractor {
     pub config: CustomExtractorConfig,
 }
@@ -97,6 +121,7 @@ pub fn create_extractor(processor: Option<&FeedProcessor>) -> anyhow::Result<Box
 
     match processor_type {
         ProcessorType::DomSmoothie => Ok(Box::new(DomSmoothieExtractor)),
+        ProcessorType::TextOnly => Ok(Box::new(TextOnlyExtractor)),
         ProcessorType::Custom => {
             let custom_config = processor
                 .and_then(|p| p.custom_config.as_ref())
