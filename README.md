@@ -9,19 +9,6 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 ![rsspub screenshot](screenshot2.png)
 ![rsspub screenshot](screenshot3.png)
 
-## Roadmap
-
-- [x] Add email send option for Kindle
-- [x] Add basic Read it later feature.
-  - [ ] Add basic "Share" App to add read it later article for ios,android and browser extension.
-- [ ] Make it multi-platform via Tauri or Dioxus
-- [x] Add user defined custom article extraction logic via <s>Scrapper</s> [dom_query](https://github.com/niklak/dom_query) crate
-    - [x] add deduplication logic for Custom Extractor
-    - [ ] add another option to fetch content from rss itself
-- [x] Add configuration for few of the hardcoded settings
-- [ ] Cleanup unused/unnecessary features
-
-
 ## Features
 
 - **Read It Later:** Save articles to read later. It will created different EPUB for read later articles and marked as read once epub is generated.(Can be saved via web UI or post request via IOS shortcut or Android app [http shortcut](https://play.google.com/store/apps/details?id=ch.rmy.android.http_shortcuts&hl=en_IN)
@@ -34,6 +21,19 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 - **Authentication:** Optional Basic Authentication to protect your instance.
 - **Email Delivery:** Automatically send generated EPUBs to a configured email address.
 - **Performance:** Built with Rust, Axum, and Tokio for high performance and low resource usage.
+
+## Roadmap
+
+- [x] Add email send option for Kindle
+- [x] Add basic Read it later feature.
+  - [ ] Add basic "Share" App to add read it later article for ios,android and browser extension.
+- [ ] Make it multi-platform via Tauri or Dioxus
+- [x] Add user defined custom article extraction logic via <s>Scrapper</s> [dom_query](https://github.com/niklak/dom_query) crate
+    - [x] add deduplication logic for Custom Extractor
+    - [ ] add another option to fetch content from rss itself
+- [x] Add configuration for few of the hardcoded settings
+- [ ] Cleanup unused/unnecessary features
+
   
 ## Getting Started
 
