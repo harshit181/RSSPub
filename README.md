@@ -18,7 +18,7 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 - **Web Interface:** A simple web UI to manage feeds, schedules, and manually trigger generation.
 - **OPDS Catalog:** Built-in OPDS server (`/opds`) to browse and download generated EPUBs.
 - **Email Delivery:** Automatically send generated EPUBs to a configured email address.
-- **Latest Downloads** Fetch the latest generated epub directly via <hostname>/downloads/latest_rss.epub and <hostname>/downloads/latest_readlater.epub
+- **Latest Downloads** Fetch the latest generated epub directly via (`hostname/downloads/latest_rss.epub`) and (`hostname/downloads/latest_readlater.epub`)
 - **Scheduling:** Automated generation based on cron expressions.
 - **Authentication:** Optional Basic Authentication to protect your instance.
 - **Performance:** Built with Rust, Axum, and Tokio for high performance and low resource usage.
