@@ -318,9 +318,9 @@ mod tests {
             fetch_since_hours: 48,
             image_timeout_seconds: 60,
         };
-        
+
         update_general_config(&conn, &new_config).unwrap();
-        
+
         let fetched_config = get_general_config(&conn).unwrap();
         assert_eq!(fetched_config.fetch_since_hours, 48);
         assert_eq!(fetched_config.image_timeout_seconds, 60);

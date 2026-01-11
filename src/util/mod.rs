@@ -3,7 +3,7 @@ use regex::Regex;
 use ammonia::Builder;
 pub(crate) mod content_extractors;
 
-pub const EPUB_OUTPUT_DIR: &str = "static/epubs";
+pub const EPUB_OUTPUT_DIR: &str = "epubs";
 pub const COVER_LOCATION: &str = "static/cover.jpg";
 pub fn clean_html(html: &str) -> String {
     let mut builder = Builder::new();
