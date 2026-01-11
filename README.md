@@ -66,7 +66,7 @@ You can also run **rsspub** using Docker Compose.
     ```env
     RPUB_USERNAME=your_username
     RPUB_PASSWORD=your_password
-    EPUBS_HOST_DIR=./your_custom_db_dir # Defaults to ./db if not set
+    SECURE_OPDS=true
     ```
 3.  Run the application:
     ```bash
@@ -110,6 +110,7 @@ You can configure the application using environment variables:
 
 -   `RPUB_USERNAME`: Set a username for Basic Authentication.
 -   `RPUB_PASSWORD`: Set a password for Basic Authentication.
+-   `SECURE_OPDS`  : Secure Download routes with Basic Authentication.
 
 If these variables are set, the Web UI and API (except `/opds`) will require authentication.
 

@@ -1,6 +1,7 @@
 use axum::http::{header, StatusCode};
 use base64::Engine;
 use axum::response::IntoResponse;
+use crate::routes::{RPUB_PASSWORD, RPUB_USERNAME};
 
 pub async fn auth(
     req: axum::extract::Request,
@@ -11,8 +12,8 @@ pub async fn auth(
         .get(header::AUTHORIZATION)
         .and_then(|header| header.to_str().ok());
 
-    let username = std::env::var("RPUB_USERNAME").unwrap_or_default();
-    let password = std::env::var("RPUB_PASSWORD").unwrap_or_default();
+    let username = std::env::var(RPUB_USERNAME).unwrap_or_default();
+    let password = std::env::var(RPUB_PASSWORD).unwrap_or_default();
 
     if let Some(auth_header) = auth_header {
         if let Some(token) = auth_header.strip_prefix("Basic ") {

@@ -1,5 +1,6 @@
 /target
 /static/epubs
+/epubs
 /src/bin
 /.idea
 .DS_Store

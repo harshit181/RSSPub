@@ -28,7 +28,7 @@ COPY --from=builder /usr/src/rsspub/target/release/rsspub /usr/local/bin/rsspub
 
 COPY --from=ui-builder /static /app/static
 COPY static/cover.jpg /app/static/cover.jpg
-RUN mkdir -p /app/static/epubs
+RUN mkdir -p /app/epubs
 RUN mkdir -p /app/db
 EXPOSE 3000
 
