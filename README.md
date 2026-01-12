@@ -34,6 +34,7 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
     - [ ] add another option to fetch content from rss itself
 - [x] Add configuration for few of the hardcoded settings
 - [ ] Cleanup unused/unnecessary features
+- [ ] Refactor OPDS server according to the official spec.
 
   
 ## Getting Started
