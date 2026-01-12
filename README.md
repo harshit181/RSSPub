@@ -66,7 +66,7 @@ You can also run **rsspub** using Docker Compose.
     ```env
     RPUB_USERNAME=your_username
     RPUB_PASSWORD=your_password
-    SECURE_OPDS=true
+    SECURE_OPDS=false
     ```
 3.  Run the application:
     ```bash
