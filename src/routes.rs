@@ -33,6 +33,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/generate", post(download_handler::generate_epub_adhoc))
         .route("/feeds", get(feed_handler::list_feeds).post(feed_handler::add_feed))
         .route("/feeds/import", post(feed_handler::import_opml))
+        .route("/feeds/reorder", post(feed_handler::reorder_feeds))
         .route("/feeds/{id}", delete(feed_handler::delete_feed).put(feed_handler::update_feed))
         .route(
             "/schedules",

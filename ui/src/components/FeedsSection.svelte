@@ -20,6 +20,9 @@
     let editCustomConfig = "";
     let editCustomConfigError = "";
 
+    let draggedIndex: number | null = null;
+    let dropTargetIndex: number | null = null;
+
     function validateYaml(value: string): string {
         if (!value.trim()) {
             return "Custom config cannot be empty";
@@ -244,6 +247,67 @@
             input.value = "";
         }
     }
+
+    function handleDragStart(event: DragEvent, index: number) {
+        draggedIndex = index;
+        if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", index.toString());
+        }
+    }
+
+    function handleDragOver(event: DragEvent, index: number) {
+        event.preventDefault();
+        if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = "move";
+        }
+        dropTargetIndex = index;
+    }
+
+    function handleDragLeave() {
+        dropTargetIndex = null;
+    }
+
+    function handleDragEnd() {
+        draggedIndex = null;
+        dropTargetIndex = null;
+    }
+
+    async function handleDrop(event: DragEvent, targetIndex: number) {
+        event.preventDefault();
+        
+        if (draggedIndex === null || draggedIndex === targetIndex) {
+            draggedIndex = null;
+            dropTargetIndex = null;
+            return;
+        }
+
+        const currentFeeds = [...$feeds];
+        const [draggedFeed] = currentFeeds.splice(draggedIndex, 1);
+        currentFeeds.splice(targetIndex, 0, draggedFeed);
+
+        feeds.set(currentFeeds);
+
+        const feedPositions = currentFeeds.map((feed, index) => ({
+            id: feed.id,
+            position: index,
+        }));
+
+        try {
+            await api("/feeds/reorder", "POST", { feeds: feedPositions });
+        } catch (e: any) {
+            popup.set({
+                visible: true,
+                title: "Error",
+                message: "Failed to save feed order: " + e.message,
+                isError: true,
+            });
+            loadFeeds();
+        }
+
+        draggedIndex = null;
+        dropTargetIndex = null;
+    }
 </script>
 
 <section id="feeds-section" class="card">
@@ -269,9 +333,19 @@
     </div>
 
     <ul id="feeds-list" class="item-list">
-        {#each $feeds as feed (feed.id)}
-            <li>
+        {#each $feeds as feed, index (feed.id)}
+            <li
+                draggable="true"
+                on:dragstart={(e) => handleDragStart(e, index)}
+                on:dragover={(e) => handleDragOver(e, index)}
+                on:dragleave={handleDragLeave}
+                on:dragend={handleDragEnd}
+                on:drop={(e) => handleDrop(e, index)}
+                class:dragging={draggedIndex === index}
+                class:drop-target={dropTargetIndex === index && draggedIndex !== index}
+            >
                 <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                    <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
                     <img
                         src="/icons/rss.svg"
                         alt="Feed Icon"

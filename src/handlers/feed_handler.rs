@@ -1,10 +1,9 @@
-use std::sync::Arc;
+use crate::db;
+use crate::models::{AppState, Feed, FeedRequest, ProcessorType, ReorderFeedsRequest};
 use axum::extract::{Multipart, Path, State};
 use axum::http::StatusCode;
 use axum::Json;
-use serde::Deserialize;
-use crate::db;
-use crate::models::{FeedRequest, AppState, Feed, ContentProcessor, ProcessorType};
+use std::sync::Arc;
 
 pub async fn list_feeds(
     State(state): State<Arc<AppState>>,
@@ -95,19 +94,19 @@ pub async fn delete_feed(
     Ok(StatusCode::NO_CONTENT)
 }
 
-pub async fn get_feed_processor(
+pub async fn reorder_feeds(
     State(state): State<Arc<AppState>>,
-    Path(id): Path<i64>,
-) -> Result<Json<Option<ContentProcessor>>, (StatusCode, String)> {
+    Json(payload): Json<ReorderFeedsRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
     let db = state.db.lock().map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "DB lock failed".to_string(),
         )
     })?;
-    let processor = db::get_feed_processor(&db, id)
+    db::reorder_feeds(&db, &payload.feeds)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    Ok(Json(processor))
+    Ok(StatusCode::OK)
 }
 
 

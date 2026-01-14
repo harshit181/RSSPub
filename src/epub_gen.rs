@@ -1,5 +1,6 @@
+use std::collections::BTreeSet;
 use crate::epub_message::EpubPart;
-use crate::feed::Article;
+use crate::feed::{Article, ArticleSource};
 use crate::image::process_images;
 use anyhow::Result;
 use chrono::Utc;
@@ -19,16 +20,18 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     use crate::epub_message::{CompletionMessage, EpubPart};
     use crate::util;
     use std::collections::HashMap;
+    //TODO: Refactor the code,rather than passing Articles,pass a Map <FeedWrapper,Article>,remove ArticleSource
     let mut articles_by_source: HashMap<String, Vec<&Article>> = HashMap::new();
+    let mut articles_sorted:BTreeSet<&ArticleSource> = BTreeSet::new();
     for article in articles {
         articles_by_source
-            .entry(article.source.clone())
+            .entry(article.article_source.source.clone())
             .or_default()
             .push(article);
+        articles_sorted.insert(&article.article_source);
     }
 
-    let mut sources: Vec<_> = articles_by_source.keys().cloned().collect();
-    sources.sort();
+    let sources: Vec<_> = articles_sorted.iter().map(|x| x.source.clone()).collect();
 
     let mut article_filenames = HashMap::new();
     for (i, _article) in articles.iter().enumerate() {
@@ -224,7 +227,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         let tx = tx.clone();
 
         let source_slug = article
-            .source
+            .article_source.source
             .replace(|c: char| !c.is_alphanumeric(), "_")
             .to_lowercase();
         let back_link = format!("toc_{}.xhtml", source_slug);
@@ -238,7 +241,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
             let content_html = format!(
                 "<h1>{}</h1><p><strong>Source:</strong> {} <br /> <strong>Date:</strong> {}</p><hr />{}<p><a href=\"{}\">Read original article</a></p><p><a href=\"{}\">Back to Feed TOC</a></p>",
                 util::escape_xml(&article.title),
-                util::escape_xml(&article.source),
+                util::escape_xml(&article.article_source.source),
                 article.pub_date.format("%Y-%m-%d %H:%M"),
                 fixed_content,
                 util::escape_xml(&article.link),

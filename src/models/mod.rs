@@ -10,6 +10,8 @@ pub struct Feed {
     pub name: Option<String>,
     #[serde(default)]
     pub concurrency_limit: usize,
+    #[serde(default)]
+    pub position: i64,
     pub feed_processor: ContentProcessor,
 }
 
@@ -57,6 +59,17 @@ pub struct FeedRequest {
     #[serde(default)]
     pub processor: Option<ProcessorType>,
     pub custom_config: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct ReorderFeedsRequest {
+    pub feeds: Vec<FeedPosition>,
+}
+
+#[derive(Deserialize)]
+pub struct FeedPosition {
+    pub id: i64,
+    pub position: i64,
 }
 
 

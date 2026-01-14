@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tracing::{info, warn};
-use crate::feed::Article;
+use crate::feed::{Article, ArticleSource};
 use crate::util::content_extractors;
 
 pub async fn generate_epub(
@@ -120,6 +120,7 @@ async fn fetch_all_article_with_content(articles: Vec<ReadItLaterArticle>, clien
         info!("Fetching: {}", article.url);
         match content_extractors::fetch_full_content(&client, &article.url).await {
             Ok((title, content)) => {
+                let article_source=ArticleSource { source: "Read It Later".to_string(), position: 0 };
                 fetched_articles.push(crate::feed::Article {
                     title,
                     link: article.url.clone(),
@@ -127,17 +128,18 @@ async fn fetch_all_article_with_content(articles: Vec<ReadItLaterArticle>, clien
                     pub_date: DateTime::parse_from_rfc3339(&article.created_at)
                         .map(|dt| dt.with_timezone(&Utc))
                         .unwrap_or_else(|_| Utc::now()),
-                    source: "Read It Later".to_string(),
+                    article_source,
                 });
             }
             Err(e) => {
                 warn!("Failed to fetch {}: {}", article.url, e);
+                let article_source=ArticleSource { source: "Read It Later Errors".to_string(), position: 0 };
                 fetched_articles.push(crate::feed::Article {
                     title: format!("Error: {}", article.url),
                     link: article.url.clone(),
                     content: format!("<p>Failed to fetch content: {}</p>", e),
                     pub_date: Utc::now(),
-                    source: "Read It Later Errors".to_string(),
+                    article_source,
                 });
             }
         }
