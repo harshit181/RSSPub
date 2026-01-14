@@ -15,11 +15,18 @@ pub struct Article {
     pub link: String,
     pub content: String,
     pub pub_date: DateTime<Utc>,
+    pub article_source: ArticleSource,
+}
+
+#[derive(Debug, Clone, PartialEq, Hash, Eq,Ord,PartialOrd)]
+pub struct ArticleSource{
+    pub position: i64,
     pub source: String,
 }
 
 pub struct FeedWrapper {
     pub feed: Feed,
+    pub position: i64,
     pub limit: usize,
     pub processor: Option<ContentProcessor>,
 }
@@ -36,11 +43,11 @@ pub async fn fetch_feeds(
 
     let mut feeds = Vec::new();
     let mut errors = Vec::new();
-    let feed_info: Vec<(String, usize, Option<ContentProcessor>)> = db_feeds
+    let feed_info: Vec<(String, usize, Option<ContentProcessor>,i64)> = db_feeds
         .into_iter()
-        .map(|f| (f.url.clone(), f.concurrency_limit, Some(f.feed_processor.clone())))
+        .map(|f| (f.url.clone(), f.concurrency_limit, Some(f.feed_processor.clone()),f.position))
         .collect();
-    for (string_url, limit, processor) in feed_info {
+    for (string_url, limit, processor,pos) in feed_info {
         let url: &str = &string_url;
         match client.get(url).send().await {
             Ok(resp) => {
@@ -57,6 +64,7 @@ pub async fn fetch_feeds(
                             info!("Successfully fetched and parsed feed: {}", url);
                             feeds.push(FeedWrapper {
                                 feed,
+                                position: pos,
                                 limit,
                                 processor,
                             });
@@ -99,12 +107,16 @@ pub async fn filter_items(
     let mut join_set = tokio::task::JoinSet::new();
 
     for (url, error_msg) in errors {
+        let article_source =ArticleSource {
+            source:"System Errors".to_string(),
+            position: i64::MAX,
+        };
         articles.push(Article {
             title: format!("Error loading feed: {}", url),
             link: url.clone(),
             content: format!("<h1>Error loading feed</h1><p><strong>URL:</strong> {}</p><p><strong>Error:</strong> {}</p>", url, error_msg),
             pub_date: Utc::now(),
-            source: "System Errors".to_string(),
+            article_source,
         });
     }
 
@@ -170,13 +182,17 @@ pub async fn filter_items(
                                 .or(entry.summary.map(|s| s.content))
                                 .unwrap_or_default()
                         };
+                        let article_source =ArticleSource {
+                            source:source_title,
+                            position: feed_wrapper.position,
+                        };
 
                         Article {
                             title,
                             link,
                             content,
                             pub_date,
-                            source: source_title,
+                            article_source,
                         }
                     });
                 }

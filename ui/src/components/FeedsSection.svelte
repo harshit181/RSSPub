@@ -20,6 +20,9 @@
     let editCustomConfig = "";
     let editCustomConfigError = "";
 
+    let draggedIndex: number | null = null;
+    let dropTargetIndex: number | null = null;
+
     function validateYaml(value: string): string {
         if (!value.trim()) {
             return "Custom config cannot be empty";
@@ -125,27 +128,27 @@
         });
     }
 
-    async function openEditProcessor(feedId: number, feedName: string) {
-        editingFeedId = feedId;
-        editingFeedName = feedName;
-        editModalOpen = true;
+    let editingUrl = "";
+    let editingConcurrencyLimit: number | null = null;
+
+    function openEditFeed(feed: any) {
+        editingFeedId = feed.id;
+        editingFeedName = feed.name || "";
+        editingUrl = feed.url;
+        editingConcurrencyLimit = feed.concurrency_limit;
         
-        try {
-            const data = await api(`/feeds/${feedId}/processor`);
-            if (data) {
-                editProcessor = data.processor || "default";
-                editCustomConfig = data.custom_config || "";
-            } else {
-                editProcessor = "default";
-                editCustomConfig = "";
-            }
-        } catch (e) {
+        if (feed.feed_processor) {
+            editProcessor = feed.feed_processor.processor || "default";
+            editCustomConfig = feed.feed_processor.custom_config || "";
+        } else {
             editProcessor = "default";
             editCustomConfig = "";
         }
+        
+        editModalOpen = true;
     }
 
-    async function saveProcessor() {
+    async function saveFeed() {
         if (!editingFeedId) return;
         if (editProcessor === "custom" && editCustomConfigError) {
             popup.set({
@@ -158,17 +161,23 @@
         }
         
         try {
-            await api(`/feeds/${editingFeedId}/processor`, "PUT", {
+            // Update feed details (including processor)
+            await api(`/feeds/${editingFeedId}`, "PUT", {
+                url: editingUrl,
+                name: editingFeedName || null,
+                concurrency_limit: editingConcurrencyLimit || 0,
                 processor: editProcessor,
                 custom_config: editProcessor === "custom" ? editCustomConfig : null,
             });
+
             editModalOpen = false;
             editingFeedId = null;
             editCustomConfigError = "";
+            loadFeeds();
             popup.set({
                 visible: true,
                 title: "Success",
-                message: "Processor updated!",
+                message: "Feed updated!",
                 isError: false,
             });
         } catch (e: any) {
@@ -184,6 +193,8 @@
     function closeEditModal() {
         editModalOpen = false;
         editingFeedId = null;
+        editingUrl = "";
+        editingConcurrencyLimit = null;
         editProcessor = "default";
         editCustomConfig = "";
         editCustomConfigError = "";
@@ -236,6 +247,67 @@
             input.value = "";
         }
     }
+
+    function handleDragStart(event: DragEvent, index: number) {
+        draggedIndex = index;
+        if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", index.toString());
+        }
+    }
+
+    function handleDragOver(event: DragEvent, index: number) {
+        event.preventDefault();
+        if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = "move";
+        }
+        dropTargetIndex = index;
+    }
+
+    function handleDragLeave() {
+        dropTargetIndex = null;
+    }
+
+    function handleDragEnd() {
+        draggedIndex = null;
+        dropTargetIndex = null;
+    }
+
+    async function handleDrop(event: DragEvent, targetIndex: number) {
+        event.preventDefault();
+        
+        if (draggedIndex === null || draggedIndex === targetIndex) {
+            draggedIndex = null;
+            dropTargetIndex = null;
+            return;
+        }
+
+        const currentFeeds = [...$feeds];
+        const [draggedFeed] = currentFeeds.splice(draggedIndex, 1);
+        currentFeeds.splice(targetIndex, 0, draggedFeed);
+
+        feeds.set(currentFeeds);
+
+        const feedPositions = currentFeeds.map((feed, index) => ({
+            id: feed.id,
+            position: index,
+        }));
+
+        try {
+            await api("/feeds/reorder", "POST", { feeds: feedPositions });
+        } catch (e: any) {
+            popup.set({
+                visible: true,
+                title: "Error",
+                message: "Failed to save feed order: " + e.message,
+                isError: true,
+            });
+            loadFeeds();
+        }
+
+        draggedIndex = null;
+        dropTargetIndex = null;
+    }
 </script>
 
 <section id="feeds-section" class="card">
@@ -261,9 +333,19 @@
     </div>
 
     <ul id="feeds-list" class="item-list">
-        {#each $feeds as feed (feed.id)}
-            <li>
+        {#each $feeds as feed, index (feed.id)}
+            <li
+                draggable="true"
+                on:dragstart={(e) => handleDragStart(e, index)}
+                on:dragover={(e) => handleDragOver(e, index)}
+                on:dragleave={handleDragLeave}
+                on:dragend={handleDragEnd}
+                on:drop={(e) => handleDrop(e, index)}
+                class:dragging={draggedIndex === index}
+                class:drop-target={dropTargetIndex === index && draggedIndex !== index}
+            >
                 <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                    <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
                     <img
                         src="/icons/rss.svg"
                         alt="Feed Icon"
@@ -283,10 +365,10 @@
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <button 
-                        on:click={() => openEditProcessor(feed.id, feed.name || feed.url)} 
+                        on:click={() => openEditFeed(feed)} 
                         class="edit-btn"
-                        title="Edit extractor"
-                    >⚙</button>
+                        title="Edit feed"
+                    >✎</button>
                     <button on:click={() => deleteFeed(feed.id)} class="delete-btn">×</button>
                 </div>
             </li>
@@ -343,11 +425,28 @@ output_mode: html"
     </form>
 </section>
 
-<!-- Edit Processor Modal -->
+<!-- Edit Feed Modal -->
 {#if editModalOpen}
     <div class="modal-overlay" on:click={closeEditModal}>
         <div class="modal-box" on:click|stopPropagation>
-            <h3>Edit Extractor: {editingFeedName}</h3>
+            <h3>Edit Feed</h3>
+            
+            <div class="modal-field">
+                <label>URL</label>
+                <input type="url" bind:value={editingUrl} placeholder="Feed URL" />
+            </div>
+
+            <div class="modal-field">
+                <label>Name</label>
+                <input type="text" bind:value={editingFeedName} placeholder="Name (Optional)" />
+            </div>
+
+            <div class="modal-field">
+                <label>Concurrency Limit (0 = Unlimited)</label>
+                <input type="number" bind:value={editingConcurrencyLimit} min="0" />
+            </div>
+
+            <hr style="margin: 15px 0; border: 0; border-top: 1px solid #444;" />
             
             <div class="modal-field">
                 <label>Processor Type</label>
@@ -381,7 +480,7 @@ output_mode: html"
             
             <div class="modal-actions">
                 <button class="cancel-btn" on:click={closeEditModal}>Cancel</button>
-                <button class="add-btn" on:click={saveProcessor} disabled={editProcessor === "custom" && !!editCustomConfigError}>Save</button>
+                <button class="add-btn" on:click={saveFeed} disabled={editProcessor === "custom" && !!editCustomConfigError}>Save</button>
             </div>
         </div>
     </div>

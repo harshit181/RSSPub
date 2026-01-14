@@ -1,9 +1,10 @@
 use chrono::Utc;
 use rusqlite::{params, Connection, Result};
 
-use crate::models::{DomainOverride, EmailConfig, Feed, ContentProcessor, GeneralConfig, ProcessorType, ReadItLaterArticle, Schedule};
+use crate::models::{DomainOverride, EmailConfig, Feed, ContentProcessor, GeneralConfig, ProcessorType, ReadItLaterArticle, Schedule, FeedPosition};
 
 pub mod schema_init;
+mod migration;
 
 pub fn add_feed(
     conn: &Connection,
@@ -11,33 +12,53 @@ pub fn add_feed(
     name: Option<&str>,
     concurrency_limit: usize,
 ) -> Result<i64> {
+    let next_position: i64 = conn
+        .query_row("SELECT COALESCE(MAX(position), -1) + 1 FROM feeds", [], |row| row.get(0))
+        .unwrap_or(0);
+    
     conn.execute(
-        "INSERT OR IGNORE INTO feeds (url, name, concurrency_limit, created_at) VALUES (?1, ?2, ?3, ?4)",
-        params![url, name, concurrency_limit, Utc::now().to_rfc3339()],
+        "INSERT OR IGNORE INTO feeds (url, name, concurrency_limit, position, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![url, name, concurrency_limit, next_position, Utc::now().to_rfc3339()],
     )?;
-    let x= conn.last_insert_rowid();
+    let x = conn.last_insert_rowid();
     Ok(x)
+}
+
+pub fn update_feed(
+    conn: &Connection,
+    id: i64,
+    url: &str,
+    name: Option<&str>,
+    concurrency_limit: usize,
+) -> Result<()> {
+    conn.execute(
+        "UPDATE feeds SET url = ?1, name = ?2, concurrency_limit = ?3 WHERE id = ?4",
+        params![url, name, concurrency_limit, id],
+    )?;
+    Ok(())
 }
 
 pub fn get_feeds(conn: &Connection) -> Result<Vec<Feed>> {
     let mut stmt = conn.prepare(
-        "SELECT f.id, f.url, f.name, f.concurrency_limit, fp.processor, fp.custom_config
+        "SELECT f.id, f.url, f.name, f.concurrency_limit, f.position, fp.processor, fp.custom_config
          FROM feeds f
-         LEFT JOIN feed_processor fp ON f.id = fp.feed_id"
+         LEFT JOIN feed_processor fp ON f.id = fp.feed_id
+         ORDER BY f.position ASC"
     )?;
     let feed_iter = stmt.query_map([], |row| {
         let feed_id: i64 = row.get(0)?;
-        let processor_int: Option<i32> = row.get(4)?;
+        let processor_int: Option<i32> = row.get(5)?;
         let processor = processor_int
             .map(ProcessorType::from_i32)
             .unwrap_or(ProcessorType::Default);
-        let custom_config: Option<String> = row.get(5)?;
+        let custom_config: Option<String> = row.get(6)?;
         
         Ok(Feed {
             id: Some(feed_id),
             url: row.get(1)?,
             name: row.get(2)?,
             concurrency_limit: row.get(3)?,
+            position: row.get(4)?,
             feed_processor: ContentProcessor {
                 id: Some(feed_id),
                 processor,
@@ -51,6 +72,14 @@ pub fn get_feeds(conn: &Connection) -> Result<Vec<Feed>> {
         feeds.push(feed?);
     }
     Ok(feeds)
+}
+
+pub fn reorder_feeds(conn: &Connection, feed_positions: &Vec<FeedPosition>) -> Result<()> {
+    let mut stmt = conn.prepare("UPDATE feeds SET position = ?1 WHERE id = ?2")?;
+    for x in feed_positions {
+        stmt.execute(params![x.position, x.id])?;
+    }
+    Ok(())
 }
 
 pub fn delete_feed(conn: &Connection, id: i64) -> Result<()> {
@@ -217,25 +246,6 @@ pub fn update_general_config(conn: &Connection, config: &GeneralConfig) -> Resul
     Ok(())
 }
 
-pub fn get_feed_processor(conn: &Connection, feed_id: i64) -> Result<Option<ContentProcessor>> {
-    let mut stmt = conn.prepare(
-        "SELECT feed_id, processor, custom_config FROM feed_processor WHERE feed_id = ?1",
-    )?;
-    let mut iter = stmt.query_map(params![feed_id], |row| {
-        let processor_int: i32 = row.get(1)?;
-        Ok(ContentProcessor {
-            id: Some(row.get(0)?),
-            processor: ProcessorType::from_i32(processor_int),
-            custom_config: row.get(2)?,
-        })
-    })?;
-
-    if let Some(result) = iter.next() {
-        Ok(Some(result?))
-    } else {
-        Ok(None)
-    }
-}
 
 pub fn save_feed_processor(
     conn: &Connection,
