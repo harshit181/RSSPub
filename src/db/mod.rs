@@ -19,6 +19,20 @@ pub fn add_feed(
     Ok(x)
 }
 
+pub fn update_feed(
+    conn: &Connection,
+    id: i64,
+    url: &str,
+    name: Option<&str>,
+    concurrency_limit: usize,
+) -> Result<()> {
+    conn.execute(
+        "UPDATE feeds SET url = ?1, name = ?2, concurrency_limit = ?3 WHERE id = ?4",
+        params![url, name, concurrency_limit, id],
+    )?;
+    Ok(())
+}
+
 pub fn get_feeds(conn: &Connection) -> Result<Vec<Feed>> {
     let mut stmt = conn.prepare(
         "SELECT f.id, f.url, f.name, f.concurrency_limit, fp.processor, fp.custom_config

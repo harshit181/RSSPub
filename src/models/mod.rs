@@ -49,7 +49,7 @@ pub struct GenerateRequest {
 }
 
 #[derive(Deserialize)]
-pub struct AddFeedRequest {
+pub struct FeedRequest {
     pub url: String,
     pub name: Option<String>,
     #[serde(default)]
@@ -58,6 +58,7 @@ pub struct AddFeedRequest {
     pub processor: Option<ProcessorType>,
     pub custom_config: Option<String>,
 }
+
 
 #[derive(Serialize)]
 pub struct ScheduleResponse {
