@@ -1,7 +1,6 @@
 mod db;
 mod email;
 mod epub_gen;
-mod epub_message;
 mod feed;
 #[cfg(feature = "mem_opt")]
 mod image;

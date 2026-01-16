@@ -1,5 +1,5 @@
 use std::collections::BTreeSet;
-use crate::epub_message::EpubPart;
+use crate::models::epub_message::EpubPart;
 use crate::feed::{Article, ArticleSource};
 use crate::image::process_images;
 use anyhow::Result;
@@ -17,7 +17,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     output: W,
     image_timeout_seconds: i32,
 ) -> Result<()> {
-    use crate::epub_message::{CompletionMessage, EpubPart};
+    use crate::models::epub_message::{CompletionMessage, EpubPart};
     use crate::util;
     use std::collections::HashMap;
     //TODO: Refactor the code,rather than passing Articles,pass a Map <FeedWrapper,Article>,remove ArticleSource

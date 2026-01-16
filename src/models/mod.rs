@@ -3,6 +3,8 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::Mutex as TokioMutex;
 use tokio_cron_scheduler::JobScheduler;
 
+pub mod epub_message;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Feed {
     pub id: Option<i64>,

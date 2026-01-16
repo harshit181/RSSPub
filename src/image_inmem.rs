@@ -1,4 +1,4 @@
-use crate::epub_message::{CompletionMessage, EpubPart};
+use crate::models::epub_message::{CompletionMessage, EpubPart};
 use anyhow::Result;
 use image::ImageFormat;
 use regex::Regex;
