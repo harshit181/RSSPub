@@ -21,6 +21,9 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tokio::sync::Mutex as TokioMutex;
 use tracing::info;
+use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 use db::schema_init;
 
 #[cfg(feature = "alternative-alloc")]
@@ -34,7 +37,10 @@ async fn main() {
     #[cfg(feature = "alternative-alloc")]
     tikv_jemalloc_ctl::background_thread::write(true).expect("failed to enable background threads");
 
-    tracing_subscriber::fmt().init();
+    tracing_subscriber::registry()
+        .with(fmt::layer())
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| "rsspub=info".into()))
+        .init();
 
     let conn = schema_init::init_db("./db/rpub.db").expect("Failed to initialize database");
     let db_mutex = Arc::new(Mutex::new(conn));
