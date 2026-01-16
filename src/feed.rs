@@ -1,3 +1,4 @@
+use std::hash::{Hash, Hasher};
 use chrono::{DateTime, Utc};
 use feed_rs::model::Feed;
 use feed_rs::parser;
@@ -29,6 +30,7 @@ pub struct FeedWrapper {
     pub position: i64,
     pub limit: usize,
     pub processor: Option<ContentProcessor>,
+    pub name: Option<String>,
 }
 
 pub async fn fetch_feeds(
@@ -43,11 +45,11 @@ pub async fn fetch_feeds(
 
     let mut feeds = Vec::new();
     let mut errors = Vec::new();
-    let feed_info: Vec<(String, usize, Option<ContentProcessor>,i64)> = db_feeds
+    let feed_info: Vec<(String, usize, Option<ContentProcessor>,i64, Option<String>)> = db_feeds
         .into_iter()
-        .map(|f| (f.url.clone(), f.concurrency_limit, Some(f.feed_processor.clone()),f.position))
+        .map(|f| (f.url.clone(), f.concurrency_limit, Some(f.feed_processor.clone()),f.position, f.name.clone()))
         .collect();
-    for (string_url, limit, processor,pos) in feed_info {
+    for (string_url, limit, processor,pos, name) in feed_info {
         let url: &str = &string_url;
         match client.get(url).send().await {
             Ok(resp) => {
@@ -67,6 +69,7 @@ pub async fn fetch_feeds(
                                 position: pos,
                                 limit,
                                 processor,
+                                name,
                             });
                         }
                         Err(e) => {
@@ -129,10 +132,10 @@ pub async fn filter_items(
         } else {
             None
         };
-        let source_title = feed
-            .title
-            .map(|t| t.content)
-            .unwrap_or("Unknown Source".to_string());
+        let source_title = feed_wrapper.name
+            .filter(|n| !n.is_empty())
+            .or_else(|| feed.title.map(|t| t.content))
+            .unwrap_or_else(|| "Unknown Source".to_string());
         for entry in feed.entries {
             if let Some(pub_date) = entry.published.or(entry.updated) {
                 if pub_date >= since {
