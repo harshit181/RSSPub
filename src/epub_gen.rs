@@ -31,7 +31,10 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         articles_sorted.insert(&article.article_source);
     }
 
-    let sources: Vec<_> = articles_sorted.iter().map(|x| x.source.clone()).collect();
+    let sources: Vec<_> = {
+        let mut seen = std::collections::HashSet::new();
+        articles_sorted.iter().map(|x| x.source.clone()).filter(|s| seen.insert(s.clone())).collect()
+    };
 
     let mut article_filenames = HashMap::new();
     for (i, _article) in articles.iter().enumerate() {
