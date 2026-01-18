@@ -14,6 +14,7 @@ mod scheduler;
 mod util;
 mod handlers;
 mod routes;
+mod templates;
 
 use crate::models::AppState;
 use std::net::SocketAddr;

@@ -1,0 +1,9 @@
+<h1>{{ source_name }}</h1>
+<p style="text-align: center;"><a href="toc.xhtml">Back to Master TOC</a></p><br />
+<ul>
+    {% for article in articles %}
+    <li><a href="{{ article.filename }}">{{ article.title }}</a></li>
+    {% endfor %}
+</ul>
+<br />
+<p style="text-align: center;"><a href="toc.xhtml">Back to Master TOC</a></p>

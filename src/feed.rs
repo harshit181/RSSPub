@@ -1,4 +1,4 @@
-use std::hash::{Hash, Hasher};
+use std::hash::{Hash};
 use chrono::{DateTime, Utc};
 use feed_rs::model::Feed;
 use feed_rs::parser;

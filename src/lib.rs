@@ -17,3 +17,4 @@ pub mod util;
 pub mod handlers;
 pub mod routes;
 pub mod scheduler;
+pub mod templates;

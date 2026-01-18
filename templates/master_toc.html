@@ -1,0 +1,6 @@
+<h1>Table of Contents</h1>
+<ul>
+    {% for source in sources %}
+    <li><a href="{{ source.toc_filename }}">{{ source.name }}</a></li>
+    {% endfor %}
+</ul>
