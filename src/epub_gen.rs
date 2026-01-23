@@ -2,7 +2,9 @@ use std::collections::BTreeSet;
 use crate::models::epub_message::EpubPart;
 use crate::feed::{Article, ArticleSource};
 use crate::image::process_images;
+use crate::templates::{XhtmlWrapper, MasterToc, TocEntry, SourceToc, ArticleEntry, ArticleTemplate};
 use anyhow::Result;
+use askama::Template;
 use chrono::Utc;
 use epub_builder::{EpubBuilder, EpubContent, EpubVersion, ReferenceType, ZipLibrary};
 use indicatif::{ProgressBar, ProgressStyle};
@@ -153,21 +155,20 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         Ok(())
     });
 
-    let mut master_toc_html = String::from("<h1>Table of Contents</h1><ul>");
-    for source in &sources {
+    let toc_entries: Vec<TocEntry> = sources.iter().map(|source| {
         let source_slug = source
             .replace(|c: char| !c.is_alphanumeric(), "_")
             .to_lowercase();
-        let source_toc_filename = format!("toc_{}.xhtml", source_slug);
-        master_toc_html.push_str(&format!(
-            "<li><a href=\"{}\">{}</a></li>",
-            source_toc_filename,
-            util::escape_xml(source)
-        ));
-    }
-    master_toc_html.push_str("</ul>");
-    let master_toc_content =
-        util::wrap_xhtml("Table of Contents", &util::fix_xhtml(&master_toc_html));
+        TocEntry {
+            toc_filename: format!("toc_{}.xhtml", source_slug),
+            name: source.clone(),
+        }
+    }).collect();
+
+    let master_toc_template = MasterToc { sources: toc_entries };
+    let master_toc_html = master_toc_template.render().map_err(|e| anyhow::anyhow!("Failed to render master TOC: {}", e))?;
+    let xhtml_wrapper = XhtmlWrapper { title: "Table of Contents", content: &master_toc_html };
+    let master_toc_content = xhtml_wrapper.render().map_err(|e| anyhow::anyhow!("Failed to render XHTML wrapper: {}", e))?;
 
     tx.send(CompletionMessage {
         sequence_id: master_toc_seq_id,
@@ -188,24 +189,24 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         let source_toc_filename = format!("toc_{}.xhtml", source_slug);
         let source_articles = &articles_by_source[source];
 
-        let mut source_toc_html = format!(
-            "<h1>{}</h1><p style='text-align: center;'><a href=\"toc.xhtml\">Back to Master TOC</a></p></br><ul>",
-            util::escape_xml(source)
-        );
-        for article in source_articles {
+        let article_entries: Vec<ArticleEntry> = source_articles.iter().map(|article| {
             let index = articles
                 .iter()
                 .position(|a| std::ptr::eq(a, *article))
                 .unwrap();
-            let filename = &article_filenames[&index];
-            source_toc_html.push_str(&format!(
-                "<li><a href=\"{}\">{}</a></li>",
-                filename,
-                util::escape_xml(&article.title)
-            ));
-        }
-        source_toc_html.push_str("</ul></br><p style='text-align: center;'><a href=\"toc.xhtml\">Back to Master TOC</a></p>");
-        let source_toc_content = util::wrap_xhtml(source, &util::fix_xhtml(&source_toc_html));
+            ArticleEntry {
+                filename: article_filenames[&index].clone(),
+                title: article.title.clone(),
+            }
+        }).collect();
+
+        let source_toc_template = SourceToc {
+            source_name: source.clone(),
+            articles: article_entries,
+        };
+        let source_toc_html = source_toc_template.render().map_err(|e| anyhow::anyhow!("Failed to render source TOC: {}", e))?;
+        let xhtml_wrapper = XhtmlWrapper { title: source, content: &source_toc_html };
+        let source_toc_content = xhtml_wrapper.render().map_err(|e| anyhow::anyhow!("Failed to render XHTML wrapper: {}", e))?;
 
         let seq_id = source_toc_seq_ids[source];
         tx.send(CompletionMessage {
@@ -241,16 +242,23 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
             let (processed_content,total_images_for_seq) = process_images(&cleaned_content,&tx_m,&seq_id, image_timeout_seconds as u64).await;
             counter_ref.fetch_add(total_images_for_seq, Ordering::Relaxed);
             let fixed_content = util::fix_xhtml(&processed_content);
-            let content_html = format!(
-                "<h1>{}</h1><p><strong>Source:</strong> {} <br /> <strong>Date:</strong> {}</p><hr />{}<p><a href=\"{}\">Read original article</a></p><p><a href=\"{}\">Back to Feed TOC</a></p>",
-                util::escape_xml(&article.title),
-                util::escape_xml(&article.article_source.source),
-                article.pub_date.format("%Y-%m-%d %H:%M"),
-                fixed_content,
-                util::escape_xml(&article.link),
-                back_link
-            );
-            let final_content = util::wrap_xhtml(&article.title, &content_html);
+
+            let article_template = ArticleTemplate {
+                title: &article.title,
+                source: &article.article_source.source,
+                pub_date: article.pub_date.format("%Y-%m-%d %H:%M").to_string(),
+                content: &fixed_content,
+                original_link: &article.link,
+                back_link,
+            };
+            let content_html = article_template.render().unwrap_or_else(|e| {
+                format!("<p>Failed to render article: {}</p>", e)
+            });
+
+            let xhtml_wrapper = XhtmlWrapper { title: &article.title, content: &content_html };
+            let final_content = xhtml_wrapper.render().unwrap_or_else(|e| {
+                format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?><html><body><p>Failed to render: {}</p></body></html>", e)
+            });
 
             let mut parts = Vec::new();
 
