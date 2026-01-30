@@ -36,7 +36,7 @@ dom_query = "0.25.1"
 serde_yaml = "0.9"
 url = "2.5.8"
 arc-swap = "1.8.0"
-askama = "0.15.1"
+askama = "0.15.4"
 
 [features]
 default = []
