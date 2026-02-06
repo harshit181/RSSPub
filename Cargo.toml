@@ -23,7 +23,7 @@ tokio-cron-scheduler = "0.15.1"
 opml = "1.1.6"
 lettre = { version = "0.11.19",default-features = false, features = ["tokio1", "tokio1-rustls-tls", "smtp-transport","builder"] }
 libvips = { version = "1.7.3", optional = true }
-regex = "1.10"
+regex = "1.12"
 ammonia = "4.1.2"
 tempfile = "3.24.0"
 image = "0.25.9"
