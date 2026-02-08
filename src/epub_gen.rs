@@ -182,7 +182,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     .await
     .map_err(|_| anyhow::anyhow!("Failed to send Master TOC"))?;
 
-    for source in &sources {
+    for (idx, source) in sources.iter().enumerate() {
         let source_slug = source
             .replace(|c: char| !c.is_alphanumeric(), "_")
             .to_lowercase();
@@ -200,9 +200,20 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
             }
         }).collect();
 
+        let next_toc_link = if idx + 1 < sources.len() {
+            let next_source = &sources[idx + 1];
+            let next_slug = next_source
+                .replace(|c: char| !c.is_alphanumeric(), "_")
+                .to_lowercase();
+            Some((format!("toc_{}.xhtml", next_slug), next_source.clone()))
+        } else {
+            None
+        };
+
         let source_toc_template = SourceToc {
             source_name: source.clone(),
             articles: article_entries,
+            next_toc_link,
         };
         let source_toc_html = source_toc_template.render().map_err(|e| anyhow::anyhow!("Failed to render source TOC: {}", e))?;
         let xhtml_wrapper = XhtmlWrapper { title: source, content: &source_toc_html };
