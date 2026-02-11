@@ -33,6 +33,7 @@ pub struct ArticleEntry {
 pub struct SourceToc {
     pub source_name: String,
     pub articles: Vec<ArticleEntry>,
+    pub next_toc_link: Option<(String, String)>,
 }
 
 

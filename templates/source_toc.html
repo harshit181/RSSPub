@@ -6,4 +6,9 @@
     {% endfor %}
 </ul>
 <br />
-<p style="text-align: center;"><a href="toc.xhtml">Back to Master TOC</a></p>
+<p style="text-align: center;">
+    <a href="toc.xhtml">Back to Master TOC</a>
+    {% if let Some((next_filename, next_name)) = next_toc_link %}
+    &nbsp;|&nbsp;<a href="{{ next_filename }}">Next: {{ next_name }}</a>
+    {% endif %}
+</p>
