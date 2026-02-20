@@ -16,6 +16,7 @@ pub mod auth_handler;
 pub mod email_handler;
 pub mod config_handler;
 pub mod domain_override_handler;
+pub mod category_handler;
 
 pub async fn opds_handler(headers: HeaderMap) -> Result<impl IntoResponse, (StatusCode, String)> {
     let host = headers

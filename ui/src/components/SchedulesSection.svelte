@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { api } from "../lib/api";
-    import { schedules, isAuthenticated, popup } from "../lib/store";
+    import { schedules, categories, isAuthenticated, popup } from "../lib/store";
     let hour = "";
     let minute = "";
     let scheduleType = "rss";
@@ -9,6 +9,7 @@
     let dayOfWeek = "0";
     let dayOfMonth = "1";
     let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    let categoryId = "";
 
     const hours = Array.from({ length: 24 }, (_, i) =>
         i.toString().padStart(2, "0"),
@@ -68,6 +69,9 @@
             schedule_type: scheduleType,
             frequency,
         };
+        if (categoryId !== "") {
+            payload.category_id = parseInt(categoryId, 10);
+        }
         
         if (frequency === "weekly") {
             payload.day_of_week = parseInt(dayOfWeek, 10);
@@ -171,6 +175,11 @@
                 <div class="schedule-info">
                     <span class="schedule-time">{formatCron(schedule)}</span>
                     <span class="schedule-type-badge">{schedule.schedule_type || 'rss'}</span>
+                    {#if schedule.category_id}
+                        <span class="schedule-category-badge" style="font-size: 0.8rem; background: #607d8b; color: #fff; padding: 2px 6px; border-radius: 4px; margin-left: 5px;">
+                            Category: {($categories.find(c => c.id === schedule.category_id) || {}).name || schedule.category_id}
+                        </span>
+                    {/if}
                 </div>
                 <button
                     on:click={() => deleteSchedule(schedule.id)}
@@ -228,6 +237,13 @@
             <select bind:value={scheduleType} required class="modern-select type-select">
                 <option value="rss">RSS Generator</option>
                 <option value="read_it_later">Read It Later</option>
+            </select>
+
+            <select bind:value={categoryId} class="modern-select">
+                <option value="">All Categories</option>
+                {#each $categories as cat (cat.id)}
+                    <option value={cat.id}>{cat.name}</option>
+                {/each}
             </select>
             
             <button type="submit" class="add-btn-modern">Add Schedule</button>

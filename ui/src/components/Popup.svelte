@@ -7,14 +7,14 @@
 
     function onConfirm() {
         if ($popup.type === "confirm") {
-            $popup.onConfirm();
+            $popup.onConfirm?.();
         }
         hidePopup();
     }
 
     function onCancel() {
         if ($popup.type === "confirm") {
-            $popup.onCancel();
+            $popup.onCancel?.();
         }
         hidePopup();
     }

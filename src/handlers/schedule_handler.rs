@@ -34,6 +34,7 @@ pub async fn list_schedules(
                             active: s.active,
                             schedule_type: s.schedule_type,
                             cron_expression: s.cron_expression.clone(),
+                            category_id: s.category_id,
                         });
                         continue;
                     }
@@ -111,7 +112,7 @@ pub async fn add_schedule(
                 "DB lock failed".to_string(),
             )
         })?;
-        db::add_schedule(&db, &cron_expression, &payload.schedule_type)
+        db::add_schedule(&db, &cron_expression, &payload.schedule_type, payload.category_id)
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
 

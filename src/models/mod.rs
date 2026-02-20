@@ -15,6 +15,36 @@ pub struct Feed {
     #[serde(default)]
     pub position: i64,
     pub feed_processor: ContentProcessor,
+    #[serde(default)]
+    pub category_id: Option<i64>,
+}
+
+#[derive(Deserialize)]
+pub struct CategoryId {
+    pub id: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Category {
+    pub id: Option<i64>,
+    pub name: String,
+    pub position: i64,
+}
+
+#[derive(Deserialize)]
+pub struct ReorderCategoriesRequest {
+    pub categories: Vec<CategoryPosition>,
+}
+
+#[derive(Deserialize)]
+pub struct CategoryPosition {
+    pub id: i64,
+    pub position: i64,
+}
+
+#[derive(Deserialize)]
+pub struct CreateCategoryRequest {
+    pub name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -24,6 +54,7 @@ pub struct Schedule {
     pub active: bool,
     #[serde(default = "default_schedule_type")]
     pub schedule_type: String,
+    pub category_id: Option<i64>,
 }
 
 fn default_schedule_type() -> String {
@@ -61,6 +92,8 @@ pub struct FeedRequest {
     #[serde(default)]
     pub processor: Option<ProcessorType>,
     pub custom_config: Option<String>,
+    #[serde(default)]
+    pub category: Option<CategoryId>,
 }
 
 #[derive(Deserialize)]
@@ -82,6 +115,7 @@ pub struct ScheduleResponse {
     pub active: bool,
     pub schedule_type: String,
     pub cron_expression: String,
+    pub category_id: Option<i64>,
 }
 
 #[derive(Deserialize)]
@@ -95,6 +129,7 @@ pub struct AddScheduleRequest {
     pub frequency: String,
     pub day_of_week: Option<u32>,
     pub day_of_month: Option<u32>,
+    pub category_id: Option<i64>,
 }
 
 fn default_frequency() -> String {

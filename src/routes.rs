@@ -60,6 +60,15 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         )
         .route("/read-it-later/deliver", post(read_it_later_handler::deliver_read_it_later))
         .route(
+            "/categories",
+            get(handlers::category_handler::list_categories).post(handlers::category_handler::add_category),
+        )
+        .route(
+            "/categories/{id}",
+            delete(handlers::category_handler::delete_category).put(handlers::category_handler::update_category),
+        )
+        .route("/categories/reorder", post(handlers::category_handler::reorder_categories))
+        .route(
             "/domain-overrides",
             get(domain_override_handler::list_domain_overrides).post(domain_override_handler::add_domain_override),
         )

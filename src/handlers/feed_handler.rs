@@ -1,9 +1,9 @@
-use crate::db;
 use crate::models::{AppState, Feed, FeedRequest, ProcessorType, ReorderFeedsRequest};
 use axum::extract::{Multipart, Path, State};
 use axum::http::StatusCode;
 use axum::Json;
 use std::sync::Arc;
+use crate::db::{category_db, feed_db};
 
 pub async fn list_feeds(
     State(state): State<Arc<AppState>>,
@@ -15,7 +15,7 @@ pub async fn list_feeds(
         )
     })?;
     let feeds =
-        db::get_feeds(&db).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        feed_db::get_feeds(&db).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(Json(feeds))
 }
 
@@ -30,7 +30,7 @@ pub async fn add_feed(
         )
     })?;
 
-    let feed_id=db::add_feed(
+    let feed_id= feed_db::add_feed(
         &db,
         &payload.url,
         payload.name.as_deref(),
@@ -40,8 +40,11 @@ pub async fn add_feed(
     
     if let Some(processor) = payload.processor {
         if processor != ProcessorType::Default {
-        let _ = db::save_feed_processor(&db,feed_id,processor,payload.custom_config.as_deref(),);
+        let _ = feed_db::save_feed_processor(&db, feed_id, processor, payload.custom_config.as_deref(),);
         }
+    }
+    if let Some(category) = &payload.category {
+        let _ = category_db::update_feed_category(&db, feed_id, category.id);
     }
         Ok(StatusCode::CREATED)
 }
@@ -58,7 +61,7 @@ pub async fn update_feed(
         )
     })?;
 
-    db::update_feed(
+    feed_db::update_feed(
         &db,
         id,
         &payload.url,
@@ -69,12 +72,16 @@ pub async fn update_feed(
 
     if let Some(processor) = payload.processor {
         if processor == ProcessorType::Default {
-            db::delete_feed_processor(&db, id)
+            feed_db::delete_feed_processor(&db, id)
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
         } else {
-            db::save_feed_processor(&db, id, processor, payload.custom_config.as_deref())
+            feed_db::save_feed_processor(&db, id, processor, payload.custom_config.as_deref())
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
         }
+    }
+    
+    if let Some(category) = &payload.category {
+        let _ = category_db::update_feed_category(&db, id, category.id);
     }
 
     Ok(StatusCode::OK)
@@ -90,7 +97,7 @@ pub async fn delete_feed(
             "DB lock failed".to_string(),
         )
     })?;
-    db::delete_feed(&db, id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    feed_db::delete_feed(&db, id).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -104,7 +111,7 @@ pub async fn reorder_feeds(
             "DB lock failed".to_string(),
         )
     })?;
-    db::reorder_feeds(&db, &payload.feeds)
+    feed_db::reorder_feeds(&db, &payload.feeds)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }
@@ -153,13 +160,13 @@ pub async fn import_opml(
 
             for outline in document.body.outlines {
                 if let Some(xml_url) = outline.xml_url {
-                    let _ = db::add_feed(&db, &xml_url, Some(&outline.text), 0);
+                    let _ = feed_db::add_feed(&db, &xml_url, Some(&outline.text), 0);
                 }
 
                 if !outline.outlines.is_empty() {
                     for child in outline.outlines {
                         if let Some(xml_url) = child.xml_url {
-                            let _ = db::add_feed(&db, &xml_url, Some(&child.text), 0);
+                            let _ = feed_db::add_feed(&db, &xml_url, Some(&child.text), 0);
                         }
                     }
                 }

@@ -46,3 +46,23 @@ pub fn migrate_position(conn: &Connection) -> Result<(), Error> {
     }
     Ok(())
 }
+
+pub fn migrate_feed_schedule(conn: &Connection) -> Result<(), Error> {
+
+    let count_category_id: i32 = conn
+        .query_row(
+            "SELECT count(*) FROM pragma_table_info('schedules') WHERE name='category_id'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    if count_category_id == 0 {
+        conn.execute(
+            "ALTER TABLE schedules ADD COLUMN category_id INTEGER",
+            [],
+        )?;
+    }
+
+    Ok(())
+}
