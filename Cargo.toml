@@ -35,7 +35,7 @@ tikv-jemalloc-ctl = {version ="0.6.1",optional = true }
 dom_query = "0.25.1"
 serde_yaml = "0.9"
 url = "2.5.8"
-arc-swap = "1.8.1"
+arc-swap = "1.8.2"
 askama = "0.15.4"
 
 [features]
