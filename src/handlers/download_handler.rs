@@ -6,7 +6,7 @@ use axum::extract::State;
 use axum::response::{IntoResponse, Response};
 use tracing::info;
 use crate::models::{AppState, GenerateRequest};
-use crate::{db, email, processor, util};
+use crate::{email, processor, util};
 use crate::db::feed_db;
 
 const RSS_DIGEST: &'static str = "rss_digest_";

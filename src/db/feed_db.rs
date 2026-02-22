@@ -37,10 +37,11 @@ pub fn update_feed(
 pub fn get_feeds(conn: &Connection) -> rusqlite::Result<Vec<Feed>> {
     let mut stmt = conn.prepare(
         "SELECT f.id, f.url, f.name, f.concurrency_limit, f.position, fp.processor, fp.custom_config,
-                fc.category_id
+                fc.category_id, c.name
          FROM feeds f
          LEFT JOIN feed_processor fp ON f.id = fp.feed_id
          LEFT JOIN feed_category fc ON f.id = fc.feed_id
+         LEFT JOIN categories c ON fc.category_id = c.id
          ORDER BY f.position ASC"
     )?;
     let feed_iter = stmt.query_map([], |row| {
@@ -52,6 +53,7 @@ pub fn get_feeds(conn: &Connection) -> rusqlite::Result<Vec<Feed>> {
         let custom_config: Option<String> = row.get(6)?;
 
         let category_id: Option<i64> = row.get(7)?;
+        let category: Option<String> = row.get(8)?;
 
         Ok(Feed {
             id: Some(feed_id),
@@ -65,6 +67,7 @@ pub fn get_feeds(conn: &Connection) -> rusqlite::Result<Vec<Feed>> {
                 custom_config,
             },
             category_id,
+            category,
         })
     })?;
 
@@ -78,10 +81,11 @@ pub fn get_feeds(conn: &Connection) -> rusqlite::Result<Vec<Feed>> {
 pub fn get_feeds_by_category(conn: &Connection, search_cat_id: i64) -> rusqlite::Result<Vec<Feed>> {
     let mut stmt = conn.prepare(
         "SELECT f.id, f.url, f.name, f.concurrency_limit, f.position, fp.processor, fp.custom_config,
-                fc.category_id
+                fc.category_id, c.name
          FROM feeds f
          LEFT JOIN feed_processor fp ON f.id = fp.feed_id
          JOIN feed_category fc ON f.id = fc.feed_id
+         LEFT JOIN categories c ON fc.category_id = c.id
          WHERE fc.category_id = ?1
          ORDER BY f.position ASC"
     )?;
@@ -94,6 +98,7 @@ pub fn get_feeds_by_category(conn: &Connection, search_cat_id: i64) -> rusqlite:
         let custom_config: Option<String> = row.get(6)?;
 
         let category_id: Option<i64> = row.get(7)?;
+        let category: Option<String> = row.get(8)?;
 
         Ok(Feed {
             id: Some(feed_id),
@@ -107,6 +112,7 @@ pub fn get_feeds_by_category(conn: &Connection, search_cat_id: i64) -> rusqlite:
                 custom_config,
             },
             category_id,
+            category,
         })
     })?;
 

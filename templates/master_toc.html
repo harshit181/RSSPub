@@ -1,6 +1,9 @@
 <h1>Table of Contents</h1>
+{% for group in groups %}
+<h2>{{ group.category }}</h2>
 <ul>
-    {% for source in sources %}
+    {% for source in group.sources %}
     <li><a href="{{ source.toc_filename }}">{{ source.name }}</a></li>
     {% endfor %}
 </ul>
+{% endfor %}

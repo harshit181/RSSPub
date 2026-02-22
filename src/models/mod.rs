@@ -17,6 +17,8 @@ pub struct Feed {
     pub feed_processor: ContentProcessor,
     #[serde(default)]
     pub category_id: Option<i64>,
+    #[serde(default)]
+    pub category: Option<String>,
 }
 
 #[derive(Deserialize)]

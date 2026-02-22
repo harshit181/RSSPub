@@ -1,8 +1,8 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use crate::models::epub_message::EpubPart;
 use crate::feed::{Article, ArticleSource};
 use crate::image::process_images;
-use crate::templates::{XhtmlWrapper, MasterToc, TocEntry, SourceToc, ArticleEntry, ArticleTemplate};
+use crate::templates::{XhtmlWrapper, MasterToc, TocEntry, SourceToc, ArticleEntry, ArticleTemplate, CategoryGroup};
 use anyhow::Result;
 use askama::Template;
 use chrono::Utc;
@@ -155,17 +155,33 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         Ok(())
     });
 
-    let toc_entries: Vec<TocEntry> = sources.iter().map(|source| {
+    let mut category_map:BTreeMap<String, Vec<TocEntry>> =BTreeMap::new();
+    
+    for source in sources.iter() {
         let source_slug = source
             .replace(|c: char| !c.is_alphanumeric(), "_")
             .to_lowercase();
-        TocEntry {
+        
+        let mut category = "Uncategorized".to_string();
+        if let Some(article) = articles_by_source[source].first() {
+            if let Some(cat) = &article.article_source.category {
+                category = cat.clone();
+            }
+        }
+        
+        let entry = TocEntry {
             toc_filename: format!("toc_{}.xhtml", source_slug),
             name: source.clone(),
-        }
+        };
+        
+        category_map.entry(category).or_default().push(entry);
+    }
+    
+    let groups: Vec<CategoryGroup> = category_map.into_iter().map(|(category, sources)| {
+        CategoryGroup { category, sources }
     }).collect();
 
-    let master_toc_template = MasterToc { sources: toc_entries };
+    let master_toc_template = MasterToc { groups };
     let master_toc_html = master_toc_template.render().map_err(|e| anyhow::anyhow!("Failed to render master TOC: {}", e))?;
     let xhtml_wrapper = XhtmlWrapper { title: "Table of Contents", content: &master_toc_html };
     let master_toc_content = xhtml_wrapper.render().map_err(|e| anyhow::anyhow!("Failed to render XHTML wrapper: {}", e))?;
