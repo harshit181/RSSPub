@@ -1577,8 +1577,25 @@ textarea.invalid {
   font-size: 0.8rem;
 }
 
-.category-item-list {
+.category-item-list,
+.uncategorized-group .item-list {
   min-height: 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.category-item-list li,
+.uncategorized-group .item-list li {
+  margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+
+  .category-item-list,
+  .uncategorized-group .item-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Sketch theme specific */
