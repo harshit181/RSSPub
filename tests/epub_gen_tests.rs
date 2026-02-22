@@ -15,6 +15,7 @@ fn create_article_source(source: &str, position: i64) -> ArticleSource {
     ArticleSource {
         source: source.to_string(),
         position,
+        category: None,
     }
 }
 

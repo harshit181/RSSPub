@@ -1,6 +1,22 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use tokio::fs;
+use askama::Template;
+
+#[derive(Template)]
+#[template(path = "opds.html", escape = "xml")]
+pub struct OpdsTemplate<'a> {
+    pub updated: &'a str,
+    pub base_url: &'a str,
+    pub entries: Vec<OpdsEntry<'a>>,
+}
+
+pub struct OpdsEntry<'a> {
+    pub filename: &'a str,
+    pub modified: String,
+    pub date_str: String,
+    pub download_url: String,
+}
 
 pub async fn generate_opds_feed(base_url: &str, dir_path: &str) -> Result<String> {
     let mut entries = Vec::new();
@@ -27,41 +43,22 @@ pub async fn generate_opds_feed(base_url: &str, dir_path: &str) -> Result<String
         Utc::now().to_rfc3339()
     };
 
-    let mut xml = String::from(
-        r#"<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/" xmlns:opds="http://opds-spec.org/2010/catalog">
-  <id>urn:uuid:rsspub-feed</id>
-  <title>RSSPub RSS Digest</title>
-  <author>
-    <name>RSSPub</name>
-  </author>
-"#,
-    );
-
-    xml.push_str(&format!("  <updated>{}</updated>\n", updated));
-    xml.push_str(&format!("  <link rel=\"self\" href=\"{}/opds\" type=\"application/atom+xml;profile=opds-catalog;kind=navigation\"/>\n", base_url));
-    xml.push_str(&format!("  <link rel=\"start\" href=\"{}/opds\" type=\"application/atom+xml;profile=opds-catalog;kind=navigation\"/>\n", base_url));
-
-    for (filename, modified) in entries {
+    let template_entries: Vec<OpdsEntry> = entries.iter().map(|(filename, modified)| {
         let date_str = modified.format("%Y-%m-%d").to_string();
         let download_url = format!("{}/epubs/{}", base_url, filename);
+        OpdsEntry {
+            filename,
+            modified: modified.to_rfc3339(),
+            date_str,
+            download_url,
+        }
+    }).collect();
 
-        xml.push_str("  <entry>\n");
-        xml.push_str(&format!("    <title>RSS Digest - {}</title>\n", date_str));
-        xml.push_str(&format!("    <id>urn:rsspub:epub:{}</id>\n", filename));
-        xml.push_str(&format!(
-            "    <updated>{}</updated>\n",
-            modified.to_rfc3339()
-        ));
-        xml.push_str(&format!(
-            "    <content type=\"text\">RSS Digest for {}</content>\n",
-            date_str
-        ));
-        xml.push_str(&format!("    <link rel=\"http://opds-spec.org/acquisition\" href=\"{}\" type=\"application/epub+zip\" />\n", download_url));
-        xml.push_str("  </entry>\n");
-    }
+    let template = OpdsTemplate {
+        updated: &updated,
+        base_url,
+        entries: template_entries,
+    };
 
-    xml.push_str("</feed>");
-
-    Ok(xml)
+    Ok(template.render()?)
 }

@@ -6,6 +6,10 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio_cron_scheduler::{Job, JobScheduler};
 use tracing::{error, info};
+use crate::db::feed_db;
+
+const RSS: &'static str = "rss";
+const READ_IT_LATER: &'static str = "read_it_later";
 
 pub async fn init_scheduler(db_conn: Arc<Mutex<Connection>>) -> Result<JobScheduler> {
     let sched = JobScheduler::new().await?;
@@ -37,11 +41,12 @@ pub async fn init_scheduler(db_conn: Arc<Mutex<Connection>>) -> Result<JobSchedu
                 let job_type = schedule.schedule_type.clone();
                 Box::pin(async move {
                     info!("Running scheduled generation for type: {}", job_type);
-                    if job_type == "rss" {
-                        if let Err(e) = run_scheduled_generation(db).await {
+                    if job_type == RSS {
+                    let category = schedule.category_id.clone();
+                        if let Err(e) = run_scheduled_generation(db,category).await {
                              error!("Scheduled generation (RSS) failed: {}", e);
                         }
-                    } else if job_type == "read_it_later" {
+                    } else if job_type == READ_IT_LATER {
                          if let Err(e) = run_read_it_later_generation(db).await {
                              error!("Scheduled generation (Read It Later) failed: {}", e);
                          }
@@ -66,10 +71,13 @@ pub async fn init_scheduler(db_conn: Arc<Mutex<Connection>>) -> Result<JobSchedu
     Ok(sched)
 }
 
-async fn run_scheduled_generation(db: Arc<Mutex<Connection>>) -> Result<()> {
+async fn run_scheduled_generation(db: Arc<Mutex<Connection>>,category_id: Option<i64>) -> Result<()> {
     let feeds = {
         let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
-        let stored_feeds = db::get_feeds(&conn)?;
+        let stored_feeds = match category_id {
+            Some(id) => feed_db::get_feeds_by_category(&conn, id)?,
+            None => feed_db::get_feeds(&conn)?,
+        };
         stored_feeds
     };
 

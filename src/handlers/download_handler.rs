@@ -6,7 +6,8 @@ use axum::extract::State;
 use axum::response::{IntoResponse, Response};
 use tracing::info;
 use crate::models::{AppState, GenerateRequest};
-use crate::{db, email, processor, util};
+use crate::{email, processor, util};
+use crate::db::feed_db;
 
 const RSS_DIGEST: &'static str = "rss_digest_";
 const READ_IT_LATER: &'static str = "read_it_later_";
@@ -53,7 +54,7 @@ pub async fn generate_epub_adhoc(
             )
         })?;
         let stored_feeds =
-            db::get_feeds(&db).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+            feed_db::get_feeds(&db).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
         stored_feeds
     } else {
         payload.feeds

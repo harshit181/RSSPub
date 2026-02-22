@@ -23,6 +23,7 @@ pub struct Article {
 pub struct ArticleSource{
     pub position: i64,
     pub source: String,
+    pub category: Option<String>,
 }
 
 pub struct FeedWrapper {
@@ -31,6 +32,7 @@ pub struct FeedWrapper {
     pub limit: usize,
     pub processor: Option<ContentProcessor>,
     pub name: Option<String>,
+    pub category: Option<String>,
 }
 
 pub async fn fetch_feeds(
@@ -45,11 +47,11 @@ pub async fn fetch_feeds(
 
     let mut feeds = Vec::new();
     let mut errors = Vec::new();
-    let feed_info: Vec<(String, usize, Option<ContentProcessor>,i64, Option<String>)> = db_feeds
+    let feed_info: Vec<(String, usize, Option<ContentProcessor>,i64, Option<String>, Option<String>)> = db_feeds
         .into_iter()
-        .map(|f| (f.url.clone(), f.concurrency_limit, Some(f.feed_processor.clone()),f.position, f.name.clone()))
+        .map(|f| (f.url.clone(), f.concurrency_limit, Some(f.feed_processor.clone()),f.position, f.name.clone(), f.category.clone()))
         .collect();
-    for (string_url, limit, processor,pos, name) in feed_info {
+    for (string_url, limit, processor,pos, name, category) in feed_info {
         let url: &str = &string_url;
         match client.get(url).send().await {
             Ok(resp) => {
@@ -70,6 +72,7 @@ pub async fn fetch_feeds(
                                 limit,
                                 processor,
                                 name,
+                                category,
                             });
                         }
                         Err(e) => {
@@ -113,6 +116,7 @@ pub async fn filter_items(
         let article_source =ArticleSource {
             source:"System Errors".to_string(),
             position: i64::MAX,
+            category: None,
         };
         articles.push(Article {
             title: format!("Error loading feed: {}", url),
@@ -157,6 +161,8 @@ pub async fn filter_items(
                     let entry = entry.clone();
                     let semaphore = semaphore.clone();
                     let processor = processor.clone();
+                    let position = feed_wrapper.position;
+                    let category = feed_wrapper.category.clone();
 
                     join_set.spawn(async move {
                         let _permit = if let Some(sem) = semaphore {
@@ -187,7 +193,8 @@ pub async fn filter_items(
                         };
                         let article_source =ArticleSource {
                             source:source_title,
-                            position: feed_wrapper.position,
+                            position,
+                            category,
                         };
 
                         Article {

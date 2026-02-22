@@ -1,108 +1,30 @@
 use chrono::Utc;
 use rusqlite::{params, Connection, Result};
 
-use crate::models::{DomainOverride, EmailConfig, Feed, ContentProcessor, GeneralConfig, ProcessorType, ReadItLaterArticle, Schedule, FeedPosition};
+use crate::models::{DomainOverride, EmailConfig, GeneralConfig, ProcessorType, ReadItLaterArticle, Schedule};
 
 pub mod schema_init;
 mod migration;
+pub mod category_db;
+pub mod feed_db;
 
-pub fn add_feed(
-    conn: &Connection,
-    url: &str,
-    name: Option<&str>,
-    concurrency_limit: usize,
-) -> Result<i64> {
-    let next_position: i64 = conn
-        .query_row("SELECT COALESCE(MAX(position), -1) + 1 FROM feeds", [], |row| row.get(0))
-        .unwrap_or(0);
-    
+pub fn add_schedule(conn: &Connection, cron_expression: &str, schedule_type: &str, category_id: Option<i64>) -> Result<()> {
     conn.execute(
-        "INSERT OR IGNORE INTO feeds (url, name, concurrency_limit, position, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![url, name, concurrency_limit, next_position, Utc::now().to_rfc3339()],
-    )?;
-    let x = conn.last_insert_rowid();
-    Ok(x)
-}
-
-pub fn update_feed(
-    conn: &Connection,
-    id: i64,
-    url: &str,
-    name: Option<&str>,
-    concurrency_limit: usize,
-) -> Result<()> {
-    conn.execute(
-        "UPDATE feeds SET url = ?1, name = ?2, concurrency_limit = ?3 WHERE id = ?4",
-        params![url, name, concurrency_limit, id],
-    )?;
-    Ok(())
-}
-
-pub fn get_feeds(conn: &Connection) -> Result<Vec<Feed>> {
-    let mut stmt = conn.prepare(
-        "SELECT f.id, f.url, f.name, f.concurrency_limit, f.position, fp.processor, fp.custom_config
-         FROM feeds f
-         LEFT JOIN feed_processor fp ON f.id = fp.feed_id
-         ORDER BY f.position ASC"
-    )?;
-    let feed_iter = stmt.query_map([], |row| {
-        let feed_id: i64 = row.get(0)?;
-        let processor_int: Option<i32> = row.get(5)?;
-        let processor = processor_int
-            .map(ProcessorType::from_i32)
-            .unwrap_or(ProcessorType::Default);
-        let custom_config: Option<String> = row.get(6)?;
-        
-        Ok(Feed {
-            id: Some(feed_id),
-            url: row.get(1)?,
-            name: row.get(2)?,
-            concurrency_limit: row.get(3)?,
-            position: row.get(4)?,
-            feed_processor: ContentProcessor {
-                id: Some(feed_id),
-                processor,
-                custom_config,
-            },
-        })
-    })?;
-
-    let mut feeds = Vec::new();
-    for feed in feed_iter {
-        feeds.push(feed?);
-    }
-    Ok(feeds)
-}
-
-pub fn reorder_feeds(conn: &Connection, feed_positions: &Vec<FeedPosition>) -> Result<()> {
-    let mut stmt = conn.prepare("UPDATE feeds SET position = ?1 WHERE id = ?2")?;
-    for x in feed_positions {
-        stmt.execute(params![x.position, x.id])?;
-    }
-    Ok(())
-}
-
-pub fn delete_feed(conn: &Connection, id: i64) -> Result<()> {
-    conn.execute("DELETE FROM feeds WHERE id = ?1", params![id])?;
-    Ok(())
-}
-
-pub fn add_schedule(conn: &Connection, cron_expression: &str, schedule_type: &str) -> Result<()> {
-    conn.execute(
-        "INSERT INTO schedules (cron_expression, active, schedule_type, created_at) VALUES (?1, ?2, ?3, ?4)",
-        params![cron_expression, true, schedule_type, Utc::now().to_rfc3339()],
+        "INSERT INTO schedules (cron_expression, active, schedule_type, category_id, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![cron_expression, true, schedule_type, category_id, Utc::now().to_rfc3339()],
     )?;
     Ok(())
 }
 
 pub fn get_schedules(conn: &Connection) -> Result<Vec<Schedule>> {
-    let mut stmt = conn.prepare("SELECT id, cron_expression, active, schedule_type FROM schedules")?;
+    let mut stmt = conn.prepare("SELECT id, cron_expression, active, schedule_type, category_id FROM schedules")?;
     let schedule_iter = stmt.query_map([], |row| {
         Ok(Schedule {
             id: Some(row.get(0)?),
             cron_expression: row.get(1)?,
             active: row.get(2)?,
             schedule_type: row.get(3)?,
+            category_id: row.get(4)?,
         })
     })?;
 
@@ -246,24 +168,6 @@ pub fn update_general_config(conn: &Connection, config: &GeneralConfig) -> Resul
     Ok(())
 }
 
-
-pub fn save_feed_processor(
-    conn: &Connection,
-    feed_id: i64,
-    processor: ProcessorType,
-    custom_config: Option<&str>,
-) -> Result<()> {
-    conn.execute(
-        "INSERT OR REPLACE INTO feed_processor (feed_id, processor, custom_config) VALUES (?1, ?2, ?3)",
-        params![feed_id, processor.to_i32(), custom_config],
-    )?;
-    Ok(())
-}
-
-pub fn delete_feed_processor(conn: &Connection, feed_id: i64) -> Result<()> {
-    conn.execute("DELETE FROM feed_processor WHERE feed_id = ?1", params![feed_id])?;
-    Ok(())
-}
 
 pub fn add_domain_override(
     conn: &Connection,

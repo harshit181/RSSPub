@@ -15,10 +15,15 @@ pub struct TocEntry {
 }
 
 
+pub struct CategoryGroup {
+    pub category: String,
+    pub sources: Vec<TocEntry>,
+}
+
 #[derive(Template)]
 #[template(path = "master_toc.html")]
 pub struct MasterToc {
-    pub sources: Vec<TocEntry>,
+    pub groups: Vec<CategoryGroup>,
 }
 
 

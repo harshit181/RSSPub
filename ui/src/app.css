@@ -1352,3 +1352,243 @@ textarea.invalid {
 #feeds-list li:hover .drag-handle {
   color: #999;
 }
+
+/* Utility & Refactored Inline Styles */
+.category-add-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.category-add-input {
+  flex: 1;
+}
+
+.category-group-container {
+  margin-bottom: 20px;
+  border: 1px solid var(--card-border);
+  padding: 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.category-group-uncategorized {
+  margin-bottom: 20px;
+  border: 1px dashed #555;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.category-header {
+  margin-top: 0;
+  color: var(--text-secondary);
+}
+
+.feed-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.feed-icon {
+  filter: invert(36%) sepia(74%) saturate(836%) hue-rotate(185deg) brightness(97%) contrast(92%);
+  flex-shrink: 0;
+}
+
+.feed-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.category-drag-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  cursor: move;
+}
+
+.category-drag-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-drag-icon {
+  font-size: 1rem;
+}
+
+.category-delete-btn {
+  padding: 2px 6px;
+  font-size: 0.8rem;
+}
+
+.category-list {
+  min-height: 40px;
+}
+
+.custom-config-input {
+  width: 100%;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.edit-modal-separator {
+  margin: 15px 0;
+  border: 0;
+  border-top: 1px solid var(--card-border);
+}
+
+.schedule-category-badge {
+  font-size: 0.8rem;
+  background: #607d8b;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 5px;
+}
+
+.email-config-full {
+  grid-column: 1 / -1;
+}
+
+.email-config-header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.email-config-toggle-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.email-config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.mt-10 {
+  margin-top: 10px;
+}
+
+.push-right {
+  margin-left: auto;
+}
+
+.text-sm-btn {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
+.header-icon-style {
+  margin-right: 6px;
+  filter: invert(36%) sepia(74%) saturate(836%) hue-rotate(185deg) brightness(97%) contrast(92%);
+}
+
+/* --- Feeds Section Categories --- */
+.import-btn {
+  margin-left: auto;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
+.category-add-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.category-input {
+  flex: 1;
+  /* Basic padding and rounding. Border and background will be picked up from regular inputs and Sketch theme transparently! */
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.uncategorized-group {
+  margin-bottom: 20px;
+  border: 1px dashed var(--card-border);
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.uncategorized-title {
+  margin-top: 0;
+  color: var(--text-secondary);
+}
+
+.feed-item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.feed-icon {
+  filter: invert(36%) sepia(74%) saturate(836%) hue-rotate(185deg) brightness(97%) contrast(92%);
+}
+
+.feed-item-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.styled-category-group {
+  margin-bottom: 20px;
+  border: 1px solid var(--card-border);
+  padding: 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  cursor: move;
+}
+
+.category-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-drag {
+  font-size: 1rem;
+}
+
+.category-delete-btn {
+  padding: 2px 6px;
+  font-size: 0.8rem;
+}
+
+.category-item-list {
+  min-height: 40px;
+}
+
+/* Sketch theme specific */
+body.sketch-theme .uncategorized-group {
+  border-style: dashed;
+}
+
+body.sketch-theme .styled-category-group {
+  background: var(--card-bg);
+  border: 2px solid var(--card-border);
+  border-radius: 3px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.1);
+}

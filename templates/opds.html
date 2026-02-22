@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/"
+    xmlns:opds="http://opds-spec.org/2010/catalog">
+    <id>urn:uuid:rsspub-feed</id>
+    <title>RSSPub RSS Digest</title>
+    <author>
+        <name>RSSPub</name>
+    </author>
+    <updated>{{ updated }}</updated>
+    <link rel="self" href="{{ base_url }}/opds" type="application/atom+xml;profile=opds-catalog;kind=navigation" />
+    <link rel="start" href="{{ base_url }}/opds" type="application/atom+xml;profile=opds-catalog;kind=navigation" />
+    {% for entry in entries %}
+    <entry>
+        <title>RSS Digest - {{ entry.date_str }}</title>
+        <id>urn:rsspub:epub:{{ entry.filename }}</id>
+        <updated>{{ entry.modified }}</updated>
+        <content type="text">RSS Digest for {{ entry.date_str }}</content>
+        <link rel="http://opds-spec.org/acquisition" href="{{ entry.download_url }}" type="application/epub+zip" />
+    </entry>
+    {% endfor %}
+</feed>

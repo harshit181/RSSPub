@@ -1,14 +1,25 @@
 <script lang="ts">
     import { isAuthenticated } from "../lib/store";
     import { onMount } from "svelte";
+    import { api } from "../lib/api";
 
     let isSketchTheme = false;
+    let serverVersion = "";
 
-    onMount(() => {
+    onMount(async () => {
         const savedTheme = localStorage.getItem("rsspub-theme");
         if (savedTheme === "sketch") {
             isSketchTheme = true;
             document.body.classList.add("sketch-theme");
+        }
+
+        try {
+            const res = await api("/api/version");
+            if (res && res.version) {
+                serverVersion = res.version;
+            }
+        } catch (e) {
+            console.warn("Failed to fetch server version", e);
         }
     });
 
@@ -37,9 +48,13 @@
             height="18"
             style="margin-right: 6px; filter: invert(36%) sepia(74%) saturate(836%) hue-rotate(185deg) brightness(97%) contrast(92%);"
         />
-        <span id="connection-status"
-            >{$isAuthenticated ? "Connected" : "Disconnected"}</span
-        >
+        <span id="connection-status">
+            {#if serverVersion}
+                v{serverVersion}
+            {:else}
+                {$isAuthenticated ? "Connected" : "Disconnected"}
+            {/if}
+        </span>
         <button class="theme-toggle" on:click={toggleTheme} title="Toggle theme">
             {#if isSketchTheme}
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

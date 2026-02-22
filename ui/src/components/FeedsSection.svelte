@@ -1,6 +1,6 @@
 <script lang="ts">
     import { api } from "../lib/api";
-    import { feeds, isAuthenticated, popup } from "../lib/store";
+    import { feeds, categories, isAuthenticated, popup } from "../lib/store";
     import yaml from "js-yaml";
 
     let url = "";
@@ -21,7 +21,14 @@
     let editCustomConfigError = "";
 
     let draggedIndex: number | null = null;
+    let draggedFeedId: number | null = null;
     let dropTargetIndex: number | null = null;
+    let dropTargetCategoryId: number | null = null;
+
+    let draggedCategoryIndex: number | null = null;
+    let dropTargetCategoryIndex: number | null = null;
+
+    let newCategoryName = "";
 
     function validateYaml(value: string): string {
         if (!value.trim()) {
@@ -56,7 +63,20 @@
     $: isAddFormValid = processor !== "custom" || !customConfigError;
 
     $: if ($isAuthenticated) {
-        loadFeeds();
+        loadData();
+    }
+
+    async function loadData() {
+        await Promise.all([loadCategories(), loadFeeds()]);
+    }
+
+    async function loadCategories() {
+        try {
+            const data = await api("/categories");
+            if (data) categories.set(data);
+        } catch (e) {
+            console.error(e);
+        }
     }
 
     async function loadFeeds() {
@@ -66,6 +86,33 @@
         } catch (e) {
             console.error(e);
         }
+    }
+
+    async function addCategory() {
+        if (!newCategoryName) return;
+        try {
+            await api("/categories", "POST", { name: newCategoryName });
+            newCategoryName = "";
+            loadCategories();
+        } catch (e: any) {
+            popup.set({ visible: true, title: "Error", message: e.message, isError: true });
+        }
+    }
+
+    function deleteCategory(id: number) {
+        popup.set({
+            visible: true, title: "Confirm", message: "Delete this category? Feeds inside will become uncategorized.",
+            isError: false, type: "confirm",
+            onConfirm: async () => {
+                try {
+                    await api(`/categories/${id}`, "DELETE");
+                    loadCategories();
+                    loadFeeds();
+                } catch (e: any) {
+                    popup.set({ visible: true, title: "Error", message: e.message, isError: true });
+                }
+            }, onCancel: () => {},
+        });
     }
 
     async function addFeed() {
@@ -248,65 +295,121 @@
         }
     }
 
-    function handleDragStart(event: DragEvent, index: number) {
+    function handleDragStart(event: DragEvent, feedId: number, index: number) {
         draggedIndex = index;
+        draggedFeedId = feedId;
+        event.stopPropagation();
         if (event.dataTransfer) {
             event.dataTransfer.effectAllowed = "move";
-            event.dataTransfer.setData("text/plain", index.toString());
+            event.dataTransfer.setData("text/plain", "feed:" + feedId);
         }
     }
 
-    function handleDragOver(event: DragEvent, index: number) {
+    function handleDragOver(event: DragEvent, index: number, categoryId: number | null) {
         event.preventDefault();
+        event.stopPropagation();
         if (event.dataTransfer) {
             event.dataTransfer.dropEffect = "move";
         }
         dropTargetIndex = index;
+        dropTargetCategoryId = categoryId;
     }
 
-    function handleDragLeave() {
+    function handleDragLeave(event: DragEvent) {
+        event.stopPropagation();
         dropTargetIndex = null;
+        dropTargetCategoryId = null;
     }
 
     function handleDragEnd() {
         draggedIndex = null;
+        draggedFeedId = null;
         dropTargetIndex = null;
+        dropTargetCategoryId = null;
+        draggedCategoryIndex = null;
+        dropTargetCategoryIndex = null;
     }
 
-    async function handleDrop(event: DragEvent, targetIndex: number) {
+    async function handleDrop(event: DragEvent, targetIndex: number, targetCategoryId: number | null) {
         event.preventDefault();
+        event.stopPropagation();
         
-        if (draggedIndex === null || draggedIndex === targetIndex) {
-            draggedIndex = null;
-            dropTargetIndex = null;
-            return;
+        const data = event.dataTransfer?.getData("text/plain");
+        if (!data || !data.startsWith("feed:")) return handleDragEnd();
+
+        const feedId = parseInt(data.split(":")[1]);
+        const feed = $feeds.find(f => f.id === feedId);
+        if (!feed) return handleDragEnd();
+
+        // Check if category changed
+        const currentCategoryId = feed.category_id || null;
+        if (currentCategoryId !== targetCategoryId) {
+            // Update feed's category assignment (we call PUT feed to update it entirely)
+            try {
+                await api(`/feeds/${feed.id}`, "PUT", {
+                    url: feed.url,
+                    name: feed.name,
+                    concurrency_limit: feed.concurrency_limit,
+                    processor: feed.feed_processor?.processor || "default",
+                    custom_config: feed.feed_processor?.custom_config || null,
+                    category: { id: targetCategoryId }
+                });
+            } catch (e: any) {
+                console.error(e);
+            }
         }
 
         const currentFeeds = [...$feeds];
-        const [draggedFeed] = currentFeeds.splice(draggedIndex, 1);
-        currentFeeds.splice(targetIndex, 0, draggedFeed);
+        const draggedFeedIndex = currentFeeds.findIndex(f => f.id === feedId);
+        if (draggedFeedIndex !== -1 && draggedFeedIndex !== targetIndex) {
+            const [draggedFeed] = currentFeeds.splice(draggedFeedIndex, 1);
+            currentFeeds.splice(targetIndex, 0, draggedFeed);
+            feeds.set(currentFeeds);
 
-        feeds.set(currentFeeds);
-
-        const feedPositions = currentFeeds.map((feed, index) => ({
-            id: feed.id,
-            position: index,
-        }));
-
-        try {
-            await api("/feeds/reorder", "POST", { feeds: feedPositions });
-        } catch (e: any) {
-            popup.set({
-                visible: true,
-                title: "Error",
-                message: "Failed to save feed order: " + e.message,
-                isError: true,
-            });
-            loadFeeds();
+            const feedPositions = currentFeeds.map((f, i) => ({ id: f.id, position: i }));
+            try {
+                await api("/feeds/reorder", "POST", { feeds: feedPositions });
+            } catch (e: any) {
+                console.error(e);
+            }
         }
+        loadData();
+        handleDragEnd();
+    }
 
-        draggedIndex = null;
-        dropTargetIndex = null;
+    function handleCategoryDragStart(event: DragEvent, index: number) {
+        draggedCategoryIndex = index;
+        if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", "category:" + index);
+        }
+    }
+
+    function handleCategoryDragOver(event: DragEvent, index: number) {
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+        dropTargetCategoryIndex = index;
+    }
+
+    async function handleCategoryDrop(event: DragEvent, targetIndex: number) {
+        event.preventDefault();
+        const data = event.dataTransfer?.getData("text/plain");
+        if (!data || !data.startsWith("category:")) return handleDragEnd();
+
+        if (draggedCategoryIndex === null || draggedCategoryIndex === targetIndex) return handleDragEnd();
+
+        const currentCategories = [...$categories];
+        const [draggedCat] = currentCategories.splice(draggedCategoryIndex, 1);
+        currentCategories.splice(targetIndex, 0, draggedCat);
+        categories.set(currentCategories);
+
+        const pos = currentCategories.map((c, i) => ({ id: c.id, position: i }));
+        try {
+            await api("/categories/reorder", "POST", { categories: pos });
+        } catch (e: any) {
+            console.error(e);
+        }
+        handleDragEnd();
     }
 </script>
 
@@ -324,56 +427,91 @@
         />
         <button
             on:click={() => fileInput.click()}
-            class="add-btn"
-            style="margin-left: auto; padding: 5px 10px; font-size: 0.8rem;"
+            class="add-btn import-btn"
             disabled={isImporting}
         >
             {importStatus}
         </button>
     </div>
 
-    <ul id="feeds-list" class="item-list">
-        {#each $feeds as feed, index (feed.id)}
-            <li
-                draggable="true"
-                on:dragstart={(e) => handleDragStart(e, index)}
-                on:dragover={(e) => handleDragOver(e, index)}
-                on:dragleave={handleDragLeave}
-                on:dragend={handleDragEnd}
-                on:drop={(e) => handleDrop(e, index)}
-                class:dragging={draggedIndex === index}
-                class:drop-target={dropTargetIndex === index && draggedIndex !== index}
-            >
-                <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-                    <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
-                    <img
-                        src="/icons/rss.svg"
-                        alt="Feed Icon"
-                        width="18"
-                        height="18"
-                        class="rss-icon"
-                        style="filter: invert(36%) sepia(74%) saturate(836%) hue-rotate(185deg) brightness(97%) contrast(92%); flex-shrink: 0;"
-                    />
-                    <span>
-                        {feed.name || feed.url}
-                        <small
-                            >({feed.concurrency_limit === 0
-                                ? "Unlimited"
-                                : feed.concurrency_limit + " threads"})</small
-                        >
-                    </span>
-                </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button 
-                        on:click={() => openEditFeed(feed)} 
-                        class="edit-btn"
-                        title="Edit feed"
-                    >✎</button>
-                    <button on:click={() => deleteFeed(feed.id)} class="delete-btn">×</button>
-                </div>
-            </li>
-        {/each}
-    </ul>
+    <!-- Add Category Form -->
+    <form on:submit|preventDefault={addCategory} class="category-add-form">
+        <input type="text" bind:value={newCategoryName} placeholder="New Category Name" required class="category-input" />
+        <button type="submit" class="add-btn-modern">Add Category</button>
+    </form>
+
+    <!-- Uncategorized Feeds -->
+    <div class="category-group uncategorized-group"
+         on:dragover={(e) => handleDragOver(e, $feeds.length, null)} 
+         on:drop={(e) => handleDrop(e, $feeds.length, null)}>
+        <h3 class="uncategorized-title">Uncategorized</h3>
+        <ul class="item-list">
+            {#each $feeds.map((f, i) => ({f, i})).filter(x => !x.f.category_id) as item (item.f.id)}
+                <li
+                    draggable="true"
+                    on:dragstart={(e) => handleDragStart(e, item.f.id, item.i)}
+                    on:dragover={(e) => handleDragOver(e, item.i, null)}
+                    on:dragleave={handleDragLeave}
+                    on:dragend={handleDragEnd}
+                    on:drop={(e) => handleDrop(e, item.i, null)}
+                    class:dragging={draggedFeedId === item.f.id}
+                    class:drop-target={dropTargetIndex === item.i && dropTargetCategoryId === null}
+                >
+                    <div class="feed-item-info">
+                        <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+                        <img src="/icons/rss.svg" alt="Feed Icon" width="18" height="18" class="feed-icon" />
+                        <span>{item.f.name || item.f.url} <small>({item.f.concurrency_limit === 0 ? "Unlimited" : item.f.concurrency_limit + " threads"})</small></span>
+                    </div>
+                    <div class="feed-item-actions">
+                        <button on:click={() => openEditFeed(item.f)} class="edit-btn">✎</button>
+                        <button on:click={() => deleteFeed(item.f.id)} class="delete-btn">×</button>
+                    </div>
+                </li>
+            {/each}
+        </ul>
+    </div>
+
+    <!-- Category Groups -->
+    {#each $categories as cat, catIndex (cat.id)}
+        <div class="category-group styled-category-group"
+             draggable="true"
+             on:dragstart={(e) => handleCategoryDragStart(e, catIndex)}
+             on:dragover={(e) => handleCategoryDragOver(e, catIndex)}
+             on:drop={(e) => handleCategoryDrop(e, catIndex)}
+             class:drop-target={dropTargetCategoryIndex === catIndex && draggedCategoryIndex !== catIndex}>
+            <div class="category-header">
+                <h3 class="category-title">
+                    <span class="drag-handle category-drag">⋮⋮</span> {cat.name}
+                </h3>
+                <button on:click={() => deleteCategory(cat.id)} class="delete-btn category-delete-btn">Delete Category</button>
+            </div>
+            
+            <ul class="item-list category-item-list"
+                on:dragover|stopPropagation={(e) => handleDragOver(e, $feeds.length, cat.id)}
+                on:drop|stopPropagation={(e) => handleDrop(e, $feeds.length, cat.id)}>
+                {#each $feeds.map((f, i) => ({f, i})).filter(x => x.f.category_id === cat.id) as item (item.f.id)}
+                    <li
+                        draggable="true"
+                        on:dragstart|stopPropagation={(e) => handleDragStart(e, item.f.id, item.i)}
+                        on:dragover|stopPropagation={(e) => handleDragOver(e, item.i, cat.id)}
+                        on:drop|stopPropagation={(e) => handleDrop(e, item.i, cat.id)}
+                        class:dragging={draggedFeedId === item.f.id}
+                        class:drop-target={dropTargetIndex === item.i && dropTargetCategoryId === cat.id}
+                    >
+                        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                            <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+                            <img src="/icons/rss.svg" alt="Feed Icon" width="18" height="18" style="filter: invert(36%) sepia(74%) saturate(836%) hue-rotate(185deg) brightness(97%) contrast(92%);" />
+                            <span>{item.f.name || item.f.url} <small>({item.f.concurrency_limit === 0 ? "Unlimited" : item.f.concurrency_limit + " threads"})</small></span>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button on:click={() => openEditFeed(item.f)} class="edit-btn">✎</button>
+                            <button on:click={() => deleteFeed(item.f.id)} class="delete-btn">×</button>
+                        </div>
+                    </li>
+                {/each}
+            </ul>
+        </div>
+    {/each}
 
     <form on:submit|preventDefault={addFeed} id="add-feed-form">
         <div class="input-group">

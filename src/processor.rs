@@ -120,7 +120,7 @@ async fn fetch_all_article_with_content(articles: Vec<ReadItLaterArticle>, clien
         info!("Fetching: {}", article.url);
         match content_extractors::fetch_full_content(&client, &article.url).await {
             Ok((title, content)) => {
-                let article_source=ArticleSource { source: "Read It Later".to_string(), position: 0 };
+                let article_source=ArticleSource { source: "Read It Later".to_string(), position: 0, category: None };
                 fetched_articles.push(crate::feed::Article {
                     title,
                     link: article.url.clone(),
@@ -133,7 +133,7 @@ async fn fetch_all_article_with_content(articles: Vec<ReadItLaterArticle>, clien
             }
             Err(e) => {
                 warn!("Failed to fetch {}: {}", article.url, e);
-                let article_source=ArticleSource { source: "Read It Later Errors".to_string(), position: 0 };
+                let article_source=ArticleSource { source: "Read It Later Errors".to_string(), position: 0, category: None };
                 fetched_articles.push(crate::feed::Article {
                     title: format!("Error: {}", article.url),
                     link: article.url.clone(),

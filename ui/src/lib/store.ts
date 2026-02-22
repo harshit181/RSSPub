@@ -18,6 +18,7 @@ authHeader.subscribe((value) => {
 });
 
 export const feeds = writable<any[]>([]);
+export const categories = writable<any[]>([]);
 export const schedules = writable<any[]>([]);
 export const downloads = writable<string[]>([]);
 export const emailConfig = writable<any>(null);
@@ -28,9 +29,9 @@ export const popup = writable<{
   title: string;
   message: string;
   isError: boolean;
-  type: "alert" | "confirm";
-  onConfirm: () => void;
-  onCancel: () => void;
+  type?: "alert" | "confirm";
+  onConfirm?: () => void;
+  onCancel?: () => void;
 }>({
   visible: false,
   title: "",

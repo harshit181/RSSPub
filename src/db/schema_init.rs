@@ -22,7 +22,8 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
             cron_expression TEXT NOT NULL,
             active BOOLEAN NOT NULL DEFAULT 1,
             schedule_type TEXT NOT NULL DEFAULT 'rss',
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            category_id INTEGER
         )",
         [],
     )?;
@@ -42,6 +43,26 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
             [],
         )?;
     }
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS categories (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            position INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
+        )",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS feed_category (
+            feed_id INTEGER NOT NULL PRIMARY KEY,
+            category_id INTEGER NOT NULL,
+            FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE CASCADE,
+            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+        )",
+        [],
+    )?;
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS email_config (
@@ -97,5 +118,6 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
 
     migration::migrate_constraint(&conn)?;
     migration::migrate_position(&conn)?;
+    migration::migrate_feed_schedule(&conn)?;
     Ok(conn)
 }
