@@ -12,6 +12,17 @@ use tracing::{info, warn};
 use crate::handlers::{auth_handler, config_handler, domain_override_handler, download_handler, email_handler, feed_handler, read_it_later_handler, schedule_handler};
 pub const RPUB_USERNAME: &'static str = "RPUB_USERNAME";
 pub const RPUB_PASSWORD: &'static str = "RPUB_PASSWORD";
+
+#[derive(serde::Serialize)]
+struct VersionInfo {
+    version: &'static str,
+}
+
+async fn version_handler() -> axum::Json<VersionInfo> {
+    axum::Json(VersionInfo {
+        version: env!("CARGO_PKG_VERSION"),
+    })
+}
 const SECURE_OPDS: &'static str = "SECURE_OPDS";
 
 pub fn create_router(state: Arc<AppState>) -> Router {
@@ -77,7 +88,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
 
     let protected_routes =add_auth_to_routes(protected_routes);
 
+    let info_routes = Router::new().route("/api/version", get(version_handler));
+
     Router::new()
+        .merge(info_routes)
         .merge(download_routes)
         .merge(protected_routes)
         .fallback_service(

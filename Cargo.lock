@@ -2824,7 +2824,7 @@ dependencies = [
 
 [[package]]
 name = "rsspub"
-version = "0.9.5"
+version = "0.110.0"
 dependencies = [
  "ammonia",
  "anyhow",
