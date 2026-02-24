@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use image::{load_from_memory, DynamicImage, GenericImage, GenericImageView, ImageFormat, Rgba};
 use rusqlite::Connection;
-use rusttype::{point, Font, Scale};
+use ab_glyph::{point, Font, FontRef, PxScale, ScaleFont};
 use tokio::task::JoinSet;
 use tracing::info;
 
@@ -338,17 +338,24 @@ fn generate_cover_image(cover_data: &Vec<u8>) -> Vec<u8> {
     if add_date_in_cover {
         if let Ok(mut img) = load_from_memory(&cover_data) {
             let font_data: &[u8] = include_bytes!("../static/Roboto-Regular.ttf");
-            if let Some(font) = Font::try_from_bytes(font_data) {
+            if let Ok(font) = FontRef::try_from_slice(font_data) {
                 let height = img.height() as f32 * 0.05; 
                 let height = if height < 20.0 { 20.0 } else { height };
-                let scale =Scale::uniform(height);
+                let scale = PxScale::from(height);
                 let text = Utc::now().format("%Y-%m-%d %H:%M").to_string();
 
-                let text_width = font.layout(&text, scale, point(0.0, 0.0))
-                    .filter_map(|g| g.pixel_bounding_box())
-                    .map(|bb| bb.max.x)
-                    .max()
-                    .unwrap_or(0) as u32;
+                let scaled_font = font.as_scaled(scale);
+                let mut text_width = 0.0;
+                let mut last_glyph_id = None;
+                for c in text.chars() {
+                    let id = font.glyph_id(c);
+                    if let Some(last_id) = last_glyph_id {
+                        text_width += scaled_font.kern(last_id, id);
+                    }
+                    text_width += scaled_font.h_advance(id);
+                    last_glyph_id = Some(id);
+                }
+                let text_width = text_width as u32;
 
                 let img_height = img.height();
                 let img_width = img.width();
@@ -356,14 +363,22 @@ fn generate_cover_image(cover_data: &Vec<u8>) -> Vec<u8> {
                 let x = if img_width > text_width + 20 { img_width - text_width - 20 } else { 10 };
                 let y = if img_height > (height as u32) + 20 { img_height - (height as u32) - 20 } else { 10 };
 
-                let v_metrics = font.v_metrics(scale);
-                let offset = point(x as f32, y as f32 + v_metrics.ascent);
+                let mut current_x = x as f32;
+                last_glyph_id = None;
                 
-                for glyph in font.layout(&text, scale, offset) {
-                    if let Some(bb) = glyph.pixel_bounding_box() {
-                        glyph.draw(|gx, gy, v| {
-                            let px = bb.min.x + gx as i32;
-                            let py = bb.min.y + gy as i32;
+                for c in text.chars() {
+                    let id = font.glyph_id(c);
+                    if let Some(last_id) = last_glyph_id {
+                        current_x += scaled_font.kern(last_id, id);
+                    }
+                    
+                    let glyph = id.with_scale_and_position(scale, point(current_x, y as f32 + scaled_font.ascent()));
+                    
+                    if let Some(outlined) = font.outline_glyph(glyph) {
+                        let bounds = outlined.px_bounds();
+                        outlined.draw(|gx, gy, v| {
+                            let px = bounds.min.x as i32 + gx as i32;
+                            let py = bounds.min.y as i32 + gy as i32;
                             
                             if px >= 0 && px < img.width() as i32 && py >= 0 && py < img.height() as i32 {
                                 let pixel = img.get_pixel(px as u32, py as u32);
@@ -379,6 +394,9 @@ fn generate_cover_image(cover_data: &Vec<u8>) -> Vec<u8> {
                             }
                         });
                     }
+                    
+                    current_x += scaled_font.h_advance(id);
+                    last_glyph_id = Some(id);
                 }
 
                 let rgb_img = DynamicImage::ImageRgb8(img.into_rgb8());
