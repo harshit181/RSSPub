@@ -4,6 +4,8 @@
 
     let fetchSinceHours = 24;
     let imageTimeoutSeconds = 45;
+    let addDateInCover = false;
+    let coverDateColor = "white";
     let loading = false;
     let message = "";
 
@@ -17,6 +19,8 @@
             const config = await api("/general-config");
             fetchSinceHours = config.fetch_since_hours;
             imageTimeoutSeconds = config.image_timeout_seconds;
+            addDateInCover = config.add_date_in_cover ?? false;
+            coverDateColor = config.cover_date_color ?? "white";
         } catch (e: any) {
             message = "Failed to load config: " + e.message;
         } finally {
@@ -31,6 +35,8 @@
             await api("/general-config", "POST", {
                 fetch_since_hours: fetchSinceHours,
                 image_timeout_seconds: imageTimeoutSeconds,
+                add_date_in_cover: addDateInCover,
+                cover_date_color: coverDateColor,
             });
             message = "Configuration saved successfully.";
         } catch (e: any) {
@@ -76,6 +82,29 @@
                 />
             </div>
         </div>
+
+        <div class="form-group">
+            <label for="add-date-cover">Add Date in Cover Image</label>
+            <div class="input-group">
+                <input
+                    type="checkbox"
+                    id="add-date-cover"
+                    bind:checked={addDateInCover}
+                />
+            </div>
+        </div>
+
+        {#if addDateInCover}
+            <div class="form-group">
+                <label for="cover-date-color">Cover Date Color</label>
+                <div class="input-group">
+                    <select id="cover-date-color" bind:value={coverDateColor}>
+                        <option value="white">White</option>
+                        <option value="black">Black</option>
+                    </select>
+                </div>
+            </div>
+        {/if}
     </div>
 
     <div class="config-actions">

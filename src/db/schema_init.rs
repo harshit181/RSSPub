@@ -91,7 +91,9 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
         "CREATE TABLE IF NOT EXISTS general_config (
             id INTEGER PRIMARY KEY CHECK (id = 1),
             fetch_since_hours INTEGER NOT NULL DEFAULT 24,
-            image_timeout_seconds INTEGER NOT NULL DEFAULT 45
+            image_timeout_seconds INTEGER NOT NULL DEFAULT 45,
+            add_date_in_cover BOOLEAN NOT NULL DEFAULT 0,
+            cover_date_color TEXT NOT NULL DEFAULT 'white'
         )",
         [],
     )?;
@@ -119,5 +121,6 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
     migration::migrate_constraint(&conn)?;
     migration::migrate_position(&conn)?;
     migration::migrate_feed_schedule(&conn)?;
+    migration::migrate_general_config_cover_date(&conn)?;
     Ok(conn)
 }

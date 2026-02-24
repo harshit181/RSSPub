@@ -8,9 +8,12 @@ use askama::Template;
 use chrono::Utc;
 use epub_builder::{EpubBuilder, EpubContent, EpubVersion, ReferenceType, ZipLibrary};
 use indicatif::{ProgressBar, ProgressStyle};
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{Cursor, Seek, SeekFrom, Write};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use image::{load_from_memory, DynamicImage, GenericImage, GenericImageView, ImageFormat, Rgba};
+use rusqlite::Connection;
+use rusttype::{point, Font, Scale};
 use tokio::task::JoinSet;
 use tracing::info;
 
@@ -92,6 +95,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         if std::path::Path::new(cover_path).exists() {
             match std::fs::read(cover_path) {
                 Ok(cover_data) => {
+                    let cover_data = generate_cover_image(&cover_data);
                     builder
                         .add_cover_image("cover.jpg", cover_data.as_slice(), "image/jpeg")
                         .map_err(|e| anyhow::anyhow!("Failed to add cover image: {}", e))?;
@@ -318,6 +322,76 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
 
     info!("EPUB generated successfully");
     Ok(())
+}
+
+fn generate_cover_image(cover_data: &Vec<u8>) -> Vec<u8> {
+    let mut final_cover_data = cover_data.clone();
+
+    let (add_date_in_cover, cover_date_color) = match Connection::open("./db/rpub.db") {
+        Ok(conn) => match crate::db::get_general_config(&conn) {
+            Ok(cfg) => (cfg.add_date_in_cover, cfg.cover_date_color),
+            Err(_) => (false, "white".to_string()),
+        },
+        Err(_) => (false, "white".to_string()),
+    };
+
+    if add_date_in_cover {
+        if let Ok(mut img) = load_from_memory(&cover_data) {
+            let font_data: &[u8] = include_bytes!("../static/Roboto-Regular.ttf");
+            if let Some(font) = Font::try_from_bytes(font_data) {
+                let height = img.height() as f32 * 0.05; 
+                let height = if height < 20.0 { 20.0 } else { height };
+                let scale =Scale::uniform(height);
+                let text = Utc::now().format("%Y-%m-%d %H:%M").to_string();
+
+                let text_width = font.layout(&text, scale, point(0.0, 0.0))
+                    .filter_map(|g| g.pixel_bounding_box())
+                    .map(|bb| bb.max.x)
+                    .max()
+                    .unwrap_or(0) as u32;
+
+                let img_height = img.height();
+                let img_width = img.width();
+
+                let x = if img_width > text_width + 20 { img_width - text_width - 20 } else { 10 };
+                let y = if img_height > (height as u32) + 20 { img_height - (height as u32) - 20 } else { 10 };
+
+                let v_metrics = font.v_metrics(scale);
+                let offset = point(x as f32, y as f32 + v_metrics.ascent);
+                
+                for glyph in font.layout(&text, scale, offset) {
+                    if let Some(bb) = glyph.pixel_bounding_box() {
+                        glyph.draw(|gx, gy, v| {
+                            let px = bb.min.x + gx as i32;
+                            let py = bb.min.y + gy as i32;
+                            
+                            if px >= 0 && px < img.width() as i32 && py >= 0 && py < img.height() as i32 {
+                                let pixel = img.get_pixel(px as u32, py as u32);
+                                let blend = |old: u8, new: u8, alpha: f32| -> u8 {
+                                    ((old as f32) * (1.0 - alpha) + (new as f32) * alpha) as u8
+                                };
+                                let text_color = if cover_date_color.to_lowercase() == "black" { 0 } else { 255 };
+                                let r = blend(pixel[0], text_color, v);
+                                let g = blend(pixel[1], text_color, v);
+                                let b = blend(pixel[2], text_color, v);
+                                let a = blend(pixel[3], 255, v);
+                                img.put_pixel(px as u32, py as u32, Rgba([r, g, b, a]));
+                            }
+                        });
+                    }
+                }
+
+                let rgb_img = DynamicImage::ImageRgb8(img.into_rgb8());
+                let mut cursor = Cursor::new(Vec::new());
+                if rgb_img.write_to(&mut cursor, ImageFormat::Jpeg).is_ok() {
+                    final_cover_data = cursor.into_inner();
+                } else {
+                    tracing::warn!("Failed to write date-annotated cover image to JPEG");
+                }
+            }
+        }
+    }
+    final_cover_data
 }
 
 fn populate_epub_data(builder: &mut EpubBuilder<ZipLibrary>, parts: Vec<EpubPart>) -> Result<()> {

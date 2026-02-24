@@ -66,3 +66,25 @@ pub fn migrate_feed_schedule(conn: &Connection) -> Result<(), Error> {
 
     Ok(())
 }
+
+pub fn migrate_general_config_cover_date(conn: &Connection) -> Result<(), Error> {
+    let count: i32 = conn
+        .query_row(
+            "SELECT count(*) FROM pragma_table_info('general_config') WHERE name='add_date_in_cover'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    if count == 0 {
+        conn.execute(
+            "ALTER TABLE general_config ADD COLUMN add_date_in_cover BOOLEAN NOT NULL DEFAULT 0",
+            [],
+        )?;
+        conn.execute(
+            "ALTER TABLE general_config ADD COLUMN cover_date_color TEXT NOT NULL DEFAULT 'white'",
+            [],
+        )?;
+    }
+    Ok(())
+}

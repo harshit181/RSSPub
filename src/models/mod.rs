@@ -160,6 +160,14 @@ pub struct GeneralConfig {
     pub fetch_since_hours: i32,
     #[serde(default = "default_timeout")]
     pub image_timeout_seconds: i32,
+    #[serde(default)]
+    pub add_date_in_cover: bool,
+    #[serde(default = "default_cover_date_color")]
+    pub cover_date_color: String,
+}
+
+fn default_cover_date_color() -> String {
+    "white".to_string()
 }
 
 fn default_timeout() -> i32 {
