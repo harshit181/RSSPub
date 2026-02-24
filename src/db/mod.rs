@@ -142,11 +142,13 @@ pub fn mark_articles_as_read(conn: &Connection, ids: &[i64]) -> Result<()> {
 }
 
 pub fn get_general_config(conn: &Connection) -> Result<GeneralConfig> {
-    let mut stmt = conn.prepare("SELECT fetch_since_hours, image_timeout_seconds FROM general_config WHERE id = 1")?;
+    let mut stmt = conn.prepare("SELECT fetch_since_hours, image_timeout_seconds, add_date_in_cover, cover_date_color FROM general_config WHERE id = 1")?;
     let mut config_iter = stmt.query_map([], |row| {
         Ok(GeneralConfig {
             fetch_since_hours: row.get(0)?,
             image_timeout_seconds: row.get(1)?,
+            add_date_in_cover: row.get(2).unwrap_or(false),
+            cover_date_color: row.get(3).unwrap_or_else(|_| "white".to_string()),
         })
     })?;
 
@@ -156,14 +158,16 @@ pub fn get_general_config(conn: &Connection) -> Result<GeneralConfig> {
         Ok(GeneralConfig {
             fetch_since_hours: 24,
             image_timeout_seconds: 45,
+            add_date_in_cover: false,
+            cover_date_color: "white".to_string(),
         })
     }
 }
 
 pub fn update_general_config(conn: &Connection, config: &GeneralConfig) -> Result<()> {
     conn.execute(
-        "INSERT OR REPLACE INTO general_config (id, fetch_since_hours, image_timeout_seconds) VALUES (1, ?1, ?2)",
-        params![config.fetch_since_hours, config.image_timeout_seconds],
+        "INSERT OR REPLACE INTO general_config (id, fetch_since_hours, image_timeout_seconds, add_date_in_cover, cover_date_color) VALUES (1, ?1, ?2, ?3, ?4)",
+        params![config.fetch_since_hours, config.image_timeout_seconds, config.add_date_in_cover, config.cover_date_color],
     )?;
     Ok(())
 }
@@ -216,7 +220,9 @@ mod tests {
             "CREATE TABLE IF NOT EXISTS general_config (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 fetch_since_hours INTEGER NOT NULL DEFAULT 24,
-                image_timeout_seconds INTEGER NOT NULL DEFAULT 45
+                image_timeout_seconds INTEGER NOT NULL DEFAULT 45,
+                add_date_in_cover BOOLEAN NOT NULL DEFAULT 0,
+                cover_date_color TEXT NOT NULL DEFAULT 'white'
             )",
             [],
         ).unwrap();
@@ -231,6 +237,8 @@ mod tests {
         let new_config = GeneralConfig {
             fetch_since_hours: 48,
             image_timeout_seconds: 60,
+            add_date_in_cover: true,
+            cover_date_color: "black".to_string(),
         };
 
         update_general_config(&conn, &new_config).unwrap();
@@ -238,17 +246,23 @@ mod tests {
         let fetched_config = get_general_config(&conn).unwrap();
         assert_eq!(fetched_config.fetch_since_hours, 48);
         assert_eq!(fetched_config.image_timeout_seconds, 60);
+        assert_eq!(fetched_config.add_date_in_cover, true);
+        assert_eq!(fetched_config.cover_date_color, "black".to_string());
 
         // Update again
         let updated_config = GeneralConfig {
             fetch_since_hours: 12,
             image_timeout_seconds: 30,
+            add_date_in_cover: false,
+            cover_date_color: "white".to_string(),
         };
         update_general_config(&conn, &updated_config).unwrap();
 
         let fetched_config_2 = get_general_config(&conn).unwrap();
         assert_eq!(fetched_config_2.fetch_since_hours, 12);
         assert_eq!(fetched_config_2.image_timeout_seconds, 30);
+        assert_eq!(fetched_config_2.add_date_in_cover, false);
+        assert_eq!(fetched_config_2.cover_date_color, "white".to_string());
     }
 }
 

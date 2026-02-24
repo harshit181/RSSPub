@@ -37,6 +37,7 @@ serde_yaml = "0.9"
 url = "2.5.8"
 arc-swap = "1.8.2"
 askama = "0.15.4"
+rusttype = "0.9.3"
 
 [features]
 default = []
