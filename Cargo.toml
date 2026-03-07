@@ -45,4 +45,4 @@ mem_opt = ["dep:libvips"]
 alternative-alloc = ["tikv-jemallocator","tikv-jemalloc-ctl"]
 
 [dev-dependencies]
-zip = "8.1.0"
+zip = "8.2.0"
