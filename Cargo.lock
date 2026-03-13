@@ -878,22 +878,6 @@ dependencies = [
 
 [[package]]
 name = "dom_query"
-version = "0.25.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d9c2e7f1d22d0f2ce07626d259b8a55f4a47cb0938d4006dd8ae037f17d585e"
-dependencies = [
- "bit-set",
- "cssparser 0.36.0",
- "foldhash 0.2.0",
- "html5ever 0.36.1",
- "nom",
- "precomputed-hash",
- "selectors 0.35.0",
- "tendril 0.4.3",
-]
-
-[[package]]
-name = "dom_query"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23e4c03f2421dab1870544d171d3db22bdab0da4015995ff0b2f23125bbda9fb"
@@ -902,25 +886,26 @@ dependencies = [
  "cssparser 0.36.0",
  "foldhash 0.2.0",
  "html5ever 0.38.0",
+ "nom",
  "precomputed-hash",
- "selectors 0.36.0",
+ "selectors",
  "tendril 0.5.0",
 ]
 
 [[package]]
 name = "dom_smoothie"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6595f36702db6bea01a10196877ad733abc6a2dfe9ef54ec828425c4b4f1bb3d"
+checksum = "0bc8a68d2cb540ae0f9d8602a15f7549cc7addf3b52614d950af1a59c5c8784f"
 dependencies = [
- "dom_query 0.25.1",
+ "dom_query",
  "flagset",
  "foldhash 0.2.0",
  "gjson",
  "html-escape",
  "once_cell",
  "phf 0.13.1",
- "tendril 0.4.3",
+ "tendril 0.5.0",
  "thiserror 2.0.17",
  "unicode-segmentation",
 ]
@@ -1405,16 +1390,6 @@ dependencies = [
  "log",
  "markup5ever 0.35.0",
  "match_token",
-]
-
-[[package]]
-name = "html5ever"
-version = "0.36.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6452c4751a24e1b99c3260d505eaeee76a050573e61f30ac2c924ddc7236f01e"
-dependencies = [
- "log",
- "markup5ever 0.36.1",
 ]
 
 [[package]]
@@ -2018,17 +1993,6 @@ dependencies = [
  "log",
  "tendril 0.4.3",
  "web_atoms 0.1.3",
-]
-
-[[package]]
-name = "markup5ever"
-version = "0.36.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c3294c4d74d0742910f8c7b466f44dda9eb2d5742c1e430138df290a1e8451c"
-dependencies = [
- "log",
- "tendril 0.4.3",
- "web_atoms 0.2.3",
 ]
 
 [[package]]
@@ -2934,7 +2898,7 @@ dependencies = [
  "base64",
  "chrono",
  "chrono-tz",
- "dom_query 0.26.0",
+ "dom_query",
  "dom_smoothie",
  "epub-builder",
  "feed-rs",
@@ -3139,25 +3103,6 @@ checksum = "cc1f0cbffaac4852523ce30d8bd3c5cdc873501d96ff467ca09b6767bb8cd5c0"
 dependencies = [
  "core-foundation-sys",
  "libc",
-]
-
-[[package]]
-name = "selectors"
-version = "0.35.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93fdfed56cd634f04fe8b9ddf947ae3dc493483e819593d2ba17df9ad05db8b2"
-dependencies = [
- "bitflags",
- "cssparser 0.36.0",
- "derive_more",
- "log",
- "new_debug_unreachable",
- "phf 0.13.1",
- "phf_codegen 0.13.1",
- "precomputed-hash",
- "rustc-hash",
- "servo_arc",
- "smallvec",
 ]
 
 [[package]]
