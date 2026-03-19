@@ -18,7 +18,7 @@ tower = { version = "0.5.3", features = ["util"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 dom_smoothie = "0.16.0"
-rusqlite = { version = "0.38", features = ["bundled","fallible_uint"] }
+rusqlite = { version = "0.39.0", features = ["bundled","fallible_uint"] }
 tokio-cron-scheduler = "0.15.1"
 opml = "1.1.6"
 lettre = { version = "0.11.19",default-features = false, features = ["tokio1", "tokio1-rustls-tls", "smtp-transport","builder"] }
@@ -32,7 +32,7 @@ base64 = "0.22.1"
 indicatif = "0.18.4"
 tikv-jemallocator = {version ="0.6.1",optional = true,features = ["unprefixed_malloc_on_supported_platforms"] }
 tikv-jemalloc-ctl = {version ="0.6.1",optional = true }
-dom_query = "0.26.0"
+dom_query = "0.27.0"
 serde_yaml = "0.9"
 url = "2.5.8"
 arc-swap = "1.8.2"

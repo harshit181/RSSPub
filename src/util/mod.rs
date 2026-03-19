@@ -46,6 +46,8 @@ pub fn fix_xhtml(html: &str) -> String {
             }
         })
         .to_string();
+    // &nbsp; is not a valid named entity in XHTML/EPUB; replace with numeric equivalent
+    fixed = fixed.replace("&nbsp;", "&#160;");
     static ATTR_REGEX: LazyLock<Regex> =LazyLock::new(|| Regex::new(r#"\b(alt|title)\s*=\s*(?:"([^"]*)"|'([^']*)')"#).unwrap());
     fixed = ATTR_REGEX
         .replace_all(&fixed, |caps: &regex::Captures| {
