@@ -36,7 +36,7 @@ dom_query = "0.27.0"
 serde_yaml = "0.9"
 url = "2.5.8"
 arc-swap = "1.8.2"
-askama = "0.15.4"
+askama = "0.15.6"
 ab_glyph = "0.2.32"
 
 [features]
