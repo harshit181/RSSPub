@@ -35,8 +35,8 @@ tikv-jemalloc-ctl = {version ="0.6.1",optional = true }
 dom_query = "0.27.0"
 serde_yaml = "0.9"
 url = "2.5.8"
-arc-swap = "1.8.2"
 askama = "0.15.6"
+arc-swap = "1.9.0"
 ab_glyph = "0.2.32"
 
 [features]
@@ -45,4 +45,4 @@ mem_opt = ["dep:libvips"]
 alternative-alloc = ["tikv-jemallocator","tikv-jemalloc-ctl"]
 
 [dev-dependencies]
-zip = "8.3.0"
+zip = "8.4.0"
