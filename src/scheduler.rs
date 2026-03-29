@@ -130,7 +130,7 @@ async fn run_read_it_later_generation(db: Arc<Mutex<Connection>>) -> Result<()> 
     Ok(())
 }
 
-async fn cleanup_old_files() -> Result<()> {
+pub async fn cleanup_old_files() -> Result<()> {
     let output_dir = crate::util::EPUB_OUTPUT_DIR;
     if !Path::new(output_dir).exists() {
         return Ok(());

@@ -55,6 +55,11 @@ async fn main() {
 
     tokio::fs::create_dir_all(util::EPUB_OUTPUT_DIR).await.unwrap();
 
+    info!("Running startup cleanup...");
+    if let Err(e) = scheduler::cleanup_old_files().await {
+        tracing::error!("Startup cleanup failed: {}", e);
+    }
+
     let app = routes::create_router(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
