@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::models::epub_message::EpubPart;
 use crate::feed::{Article, ArticleSource};
 use crate::image::process_images;
-use crate::templates::{XhtmlWrapper, MasterToc, TocEntry, SourceToc, ArticleEntry, ArticleTemplate, CategoryGroup};
+use crate::templates::{XhtmlWrapper, MasterToc, TocEntry, SourceToc, ArticleEntry, ArticleTemplate, CategoryGroup, CoverTemplate};
 use anyhow::Result;
 use askama::Template;
 use chrono::Utc;
@@ -99,6 +99,15 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
                     builder
                         .add_cover_image("cover.jpg", cover_data.as_slice(), "image/jpeg")
                         .map_err(|e| anyhow::anyhow!("Failed to add cover image: {}", e))?;
+
+                    let cover_template = CoverTemplate { image_path: "cover.jpg" };
+                    let cover_html = cover_template.render().map_err(|e| anyhow::anyhow!("Failed to render cover template: {}", e))?;
+                    let cover_xhtml = XhtmlWrapper { title: "Cover", content: &cover_html };
+                    let cover_content = cover_xhtml.render().map_err(|e| anyhow::anyhow!("Failed to render cover XHTML: {}", e))?;
+                    let cover_page = EpubContent::new("cover.xhtml", cover_content.as_bytes())
+                        .title("Cover")
+                        .reftype(ReferenceType::Cover);
+                    builder.add_content(cover_page).map_err(|e| anyhow::anyhow!("Failed to add cover page: {}", e))?;
                 }
                 Err(e) => info!("Failed to read cover image: {}", e),
             }

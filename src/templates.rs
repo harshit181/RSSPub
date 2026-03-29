@@ -43,6 +43,12 @@ pub struct SourceToc {
 
 
 #[derive(Template)]
+#[template(path = "cover.html")]
+pub struct CoverTemplate<'a> {
+    pub image_path: &'a str,
+}
+
+#[derive(Template)]
 #[template(path = "article.html")]
 pub struct ArticleTemplate<'a> {
     pub title: &'a str,
