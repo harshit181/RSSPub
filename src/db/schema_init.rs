@@ -70,6 +70,7 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
             smtp_host TEXT NOT NULL,
             smtp_port INTEGER NOT NULL,
             smtp_password TEXT NOT NULL,
+            smtp_username TEXT NOT NULL DEFAULT '',
             email_address TEXT NOT NULL,
             to_email TEXT NOT NULL,
             enable_auto_send BOOLEAN NOT NULL DEFAULT 0
@@ -122,5 +123,6 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
     migration::migrate_position(&conn)?;
     migration::migrate_feed_schedule(&conn)?;
     migration::migrate_general_config_cover_date(&conn)?;
+    migration::migrate_email_config_smtp_username(&conn)?;
     Ok(conn)
 }

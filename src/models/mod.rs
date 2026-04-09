@@ -69,6 +69,8 @@ pub struct EmailConfig {
     pub smtp_port: u16,
     pub smtp_password: String,
     pub email_address: String,
+    #[serde(default)]
+    pub smtp_username: String,
     pub to_email: String,
     #[serde(default)]
     pub enable_auto_send: bool,

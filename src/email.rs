@@ -17,6 +17,12 @@ use crate::db;
 pub async fn send_epub(config: &EmailConfig, epub_path: &Path) -> Result<()> {
     info!("Preparing to send email to {}", config.to_email);
 
+    let smtp_username = if config.smtp_username.trim().is_empty() {
+        config.email_address.as_str()
+    } else {
+        config.smtp_username.as_str()
+    };
+
     let filename = epub_path
         .file_name()
         .and_then(|s| s.to_str())
@@ -47,7 +53,7 @@ pub async fn send_epub(config: &EmailConfig, epub_path: &Path) -> Result<()> {
         )
         .context("Failed to build email")?;
 
-    let creds = Credentials::new(config.email_address.clone(), config.smtp_password.clone());
+    let creds = Credentials::new(smtp_username.to_string(), config.smtp_password.clone());
 
     info!(
         "Sending email via {}:{}...",

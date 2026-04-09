@@ -42,16 +42,17 @@ pub fn delete_schedule(conn: &Connection, id: i64) -> Result<()> {
 
 pub fn get_email_config(conn: &Connection) -> Result<Option<EmailConfig>> {
     let mut stmt = conn.prepare(
-        "SELECT smtp_host, smtp_port, smtp_password, email_address, to_email, enable_auto_send FROM email_config WHERE id = 1",
+        "SELECT smtp_host, smtp_port, smtp_password, smtp_username, email_address, to_email, enable_auto_send FROM email_config WHERE id = 1",
     )?;
     let mut config_iter = stmt.query_map([], |row| {
         Ok(EmailConfig {
             smtp_host: row.get(0)?,
             smtp_port: row.get(1)?,
             smtp_password: row.get(2)?,
-            email_address: row.get(3)?,
-            to_email: row.get(4)?,
-            enable_auto_send: row.get(5).unwrap_or(false),
+            smtp_username: row.get(3).unwrap_or_default(),
+            email_address: row.get(4)?,
+            to_email: row.get(5)?,
+            enable_auto_send: row.get(6).unwrap_or(false),
         })
     })?;
 
@@ -64,12 +65,13 @@ pub fn get_email_config(conn: &Connection) -> Result<Option<EmailConfig>> {
 
 pub fn save_email_config(conn: &Connection, config: &EmailConfig) -> Result<()> {
     conn.execute(
-        "INSERT OR REPLACE INTO email_config (id, smtp_host, smtp_port, smtp_password, email_address, to_email, enable_auto_send)
-         VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6)",
+        "INSERT OR REPLACE INTO email_config (id, smtp_host, smtp_port, smtp_password, smtp_username, email_address, to_email, enable_auto_send)
+         VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![
             config.smtp_host,
             config.smtp_port,
             config.smtp_password,
+            config.smtp_username,
             config.email_address,
             config.to_email,
             config.enable_auto_send
@@ -265,4 +267,3 @@ mod tests {
         assert_eq!(fetched_config_2.cover_date_color, "white".to_string());
     }
 }
-

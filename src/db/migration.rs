@@ -88,3 +88,22 @@ pub fn migrate_general_config_cover_date(conn: &Connection) -> Result<(), Error>
     }
     Ok(())
 }
+
+pub fn migrate_email_config_smtp_username(conn: &Connection) -> Result<(), Error> {
+    let count: i32 = conn
+        .query_row(
+            "SELECT count(*) FROM pragma_table_info('email_config') WHERE name='smtp_username'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    if count == 0 {
+        conn.execute(
+            "ALTER TABLE email_config ADD COLUMN smtp_username TEXT NOT NULL DEFAULT ''",
+            [],
+        )?;
+    }
+
+    Ok(())
+}

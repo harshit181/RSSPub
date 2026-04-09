@@ -4,6 +4,7 @@
 
     let smtp_host = "";
     let smtp_port: number | null = null;
+    let smtp_username = "";
     let smtp_password = "";
     let email_address = "";
     let to_email = "";
@@ -24,6 +25,7 @@
                 smtp_host = config.smtp_host || "";
                 smtp_port = config.smtp_port || null;
 
+                smtp_username = config.smtp_username || "";
                 smtp_password = config.smtp_password || "";
                 email_address = config.email_address || "";
                 to_email = config.to_email || "";
@@ -43,7 +45,7 @@
             await api("/email-config", "POST", {
                 smtp_host,
                 smtp_port: smtp_port || 0,
-                smtp_username: email_address,
+                smtp_username,
                 smtp_password,
                 email_address,
                 to_email,
@@ -108,6 +110,11 @@
                     bind:value={smtp_port}
                     placeholder="Port (e.g. 587)"
                     required
+                />
+                <input
+                    type="text"
+                    bind:value={smtp_username}
+                    placeholder="SMTP Username (optional)"
                 />
                 <input
                     type="password"
