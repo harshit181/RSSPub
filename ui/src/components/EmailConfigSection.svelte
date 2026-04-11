@@ -9,6 +9,7 @@
     let email_address = "";
     let to_email = "";
     let enable_auto_send = false;
+    let useSeparateUsername = false;
     let statusMsg = "";
     let statusColor = "";
     let isSaving = false;
@@ -30,6 +31,9 @@
                 email_address = config.email_address || "";
                 to_email = config.to_email || "";
                 enable_auto_send = config.enable_auto_send || false;
+
+                // If backend returns a non-empty username, assume user uses a separate one
+                useSeparateUsername = !!config.smtp_username;
             }
         } catch (e) {
             console.error("Failed to load email config", e);
@@ -45,7 +49,7 @@
             await api("/email-config", "POST", {
                 smtp_host,
                 smtp_port: smtp_port || 0,
-                smtp_username,
+                smtp_username: useSeparateUsername ? smtp_username : "",
                 smtp_password,
                 email_address,
                 to_email,
@@ -68,6 +72,12 @@
     async function handleToggleChange() {
         if (!enable_auto_send) {
             await saveEmailConfig();
+        }
+    }
+
+    function handleUsernameToggleChange() {
+        if (!useSeparateUsername) {
+            smtp_username = "";
         }
     }
 </script>
@@ -111,11 +121,27 @@
                     placeholder="Port (e.g. 587)"
                     required
                 />
-                <input
-                    type="text"
-                    bind:value={smtp_username}
-                    placeholder="SMTP Username (optional)"
-                />
+
+                <label
+                    id="separate-username-toggle"
+                    style="display: flex; align-items: center; gap: 8px; grid-column: 1 / -1; cursor: pointer; user-select: none; font-size: 0.85rem; color: var(--text-secondary);"
+                >
+                    <input
+                        type="checkbox"
+                        bind:checked={useSeparateUsername}
+                        on:change={handleUsernameToggleChange}
+                        style="accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer;"
+                    />
+                    Use separate SMTP username than email
+                </label>
+
+                {#if useSeparateUsername}
+                    <input
+                        type="text"
+                        bind:value={smtp_username}
+                        placeholder="SMTP Username (optional)"
+                    />
+                {/if}
                 <input
                     type="password"
                     bind:value={smtp_password}
