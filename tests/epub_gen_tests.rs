@@ -315,6 +315,20 @@ async fn test_article_metadata_formatting() {
     assert!(chapter.contains("Back to Feed TOC"), "Should have back to TOC link");
 }
 
+#[tokio::test]
+async fn test_content_opf_includes_language_metadata() {
+    let articles = vec![create_simple_article("Language Test", "Metadata Source", 0)];
+
+    let epub_data = generate_epub_to_vec(&articles).await;
+    let mut archive = extract_epub(epub_data);
+    let content_opf = read_epub_file(&mut archive, "content.opf").unwrap();
+
+    assert!(
+        content_opf.contains("<dc:language") && content_opf.contains(">en</dc:language>"),
+        "content.opf should include dc:language metadata"
+    );
+}
+
 // ============================================================================
 // Sequencing and Ordering Tests
 // ============================================================================
