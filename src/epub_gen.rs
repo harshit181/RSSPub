@@ -8,6 +8,7 @@ use askama::Template;
 use chrono::Utc;
 use epub_builder::{EpubBuilder, EpubContent, EpubVersion, ReferenceType, ZipLibrary};
 use indicatif::{ProgressBar, ProgressStyle};
+use std::env;
 use std::io::{Cursor, Seek, SeekFrom, Write};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -16,6 +17,19 @@ use rusqlite::Connection;
 use ab_glyph::{point, Font, FontRef, PxScale, ScaleFont};
 use tokio::task::JoinSet;
 use tracing::info;
+
+const EPUB_LANGUAGE_ENV: &str = "RSSPUB_EPUB_LANGUAGE";
+
+fn resolve_epub_language(value: Option<String>) -> String {
+    value
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "en".to_string())
+}
+
+fn epub_language() -> String {
+    resolve_epub_language(env::var(EPUB_LANGUAGE_ENV).ok())
+}
 
 pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     articles: &[Article],
@@ -83,6 +97,9 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         builder.epub_version(EpubVersion::V33);
         builder
             .metadata("author", "RSSPub RSS Book")
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        builder
+            .metadata("lang", epub_language())
             .map_err(|e| anyhow::anyhow!("{}", e))?;
         builder
             .metadata(
@@ -331,6 +348,26 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
 
     info!("EPUB generated successfully");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_epub_language;
+
+    #[test]
+    fn uses_default_epub_language_when_env_missing() {
+        assert_eq!(resolve_epub_language(None), "en");
+    }
+
+    #[test]
+    fn trims_configured_epub_language() {
+        assert_eq!(resolve_epub_language(Some(" de ".to_string())), "de");
+    }
+
+    #[test]
+    fn ignores_empty_configured_epub_language() {
+        assert_eq!(resolve_epub_language(Some("   ".to_string())), "en");
+    }
 }
 
 fn generate_cover_image(cover_data: &Vec<u8>) -> Vec<u8> {
