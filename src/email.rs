@@ -81,13 +81,34 @@ pub async fn send_epub(config: &EmailConfig, epub_path: &Path) -> Result<()> {
         config.smtp_host, config.smtp_port
     );
 
-    let mailer: AsyncSmtpTransport<Tokio1Executor> =
-        AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&config.smtp_host)
-            .context("Failed to create SMTP transport")?
+    let starttls_mode = env::var("EMAIL_TLS")
+        .unwrap_or_else(|_| "starttls".to_string())
+        .to_lowercase();
+
+    let mailer: AsyncSmtpTransport<Tokio1Executor> = if starttls_mode == "plaintext" {
+        info!("Using plaintext (unencrypted) connection");
+        AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&config.smtp_host)
             .port(config.smtp_port)
             .credentials(creds)
             .timeout(Some(Duration::from_mins(3)))
-            .build();
+            .build()
+    } else if starttls_mode == "relay" {
+        info!("STARTTLS disabled via env; using implicit TLS (relay)");
+        AsyncSmtpTransport::<Tokio1Executor>::relay(&config.smtp_host)
+            .context("Failed to create SMTP transport (implicit TLS)")?
+            .port(config.smtp_port)
+            .credentials(creds)
+            .timeout(Some(Duration::from_mins(3)))
+            .build()
+    } else {
+        info!("Using STARTTLS");
+        AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&config.smtp_host)
+            .context("Failed to create SMTP transport (STARTTLS)")?
+            .port(config.smtp_port)
+            .credentials(creds)
+            .timeout(Some(Duration::from_mins(3)))
+            .build()
+    };
 
     //mailer.send(email).await.context("Failed to send email")?;
     match mailer.send(email).await {

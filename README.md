@@ -113,6 +113,10 @@ You can configure the application using environment variables:
 -   `RPUB_USERNAME`: Set a username for Basic Authentication.
 -   `RPUB_PASSWORD`: Set a password for Basic Authentication.
 -   `SECURE_OPDS`  : Secure Download routes with Basic Authentication.
+-   `EMAIL_TLS`: Configure SMTP encryption mode. Defaults to `starttls`.
+    -   `starttls` : Uses STARTTLS for opportunistic encryption.
+    -   `relay`    : Uses implicit TLS.
+    -   `plaintext`: Uses an unencrypted connection.
 
 If these variables are set, the Web UI and API (except `/opds`) will require authentication.
 
