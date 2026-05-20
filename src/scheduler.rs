@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio_cron_scheduler::{Job, JobScheduler};
 use tracing::{error, info};
+use crate::db::category_db;
 use crate::db::feed_db;
 
 const RSS: &'static str = "rss";
@@ -88,16 +89,17 @@ async fn run_scheduled_generation(
     override_to_email: Option<String>,
     fetch_since_hours_override: Option<i32>,
 ) -> Result<()> {
-    let feeds = {
+    let (feeds, cover_text_context) = {
         let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
+        let cover_text_context = schedule_category_context(&conn, &category_ids)?;
         if category_ids.is_empty() {
-            feed_db::get_feeds(&conn)?
+            (feed_db::get_feeds(&conn)?, cover_text_context)
         } else {
             let mut deduped_feeds = Vec::new();
             let mut seen_feed_ids = HashSet::new();
 
-            for category_id in category_ids {
-                for feed in feed_db::get_feeds_by_category(&conn, category_id)? {
+            for category_id in &category_ids {
+                for feed in feed_db::get_feeds_by_category(&conn, *category_id)? {
                     let feed_id = feed.id.unwrap_or_default();
                     if seen_feed_ids.insert(feed_id) {
                         deduped_feeds.push(feed);
@@ -106,7 +108,7 @@ async fn run_scheduled_generation(
             }
 
             deduped_feeds.sort_by_key(|feed| feed.position);
-            deduped_feeds
+            (deduped_feeds, cover_text_context)
         }
     };
 
@@ -120,6 +122,7 @@ async fn run_scheduled_generation(
         &db,
         crate::util::EPUB_OUTPUT_DIR,
         fetch_since_hours_override,
+        Some(cover_text_context),
     ).await?;
     info!("Scheduled generation completed: {}", filename);
     email::check_and_send_email(db, &filename, override_to_email.as_deref()).await?;
@@ -131,12 +134,16 @@ async fn run_read_it_later_generation(
     db: Arc<Mutex<Connection>>,
     override_to_email: Option<String>,
 ) -> Result<()> {
-    let (articles, image_timeout) = {
+    let (articles, image_timeout, cover_text) = {
         let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
         let articles = db::get_read_it_later_articles(&conn, true)?;
         let config = db::get_general_config(&conn)?;
+        let cover_text = processor::cover_text_config_from_general_config(
+            &config,
+            Some(processor::READ_IT_LATER_COVER_TEXT_CONTEXT.to_string()),
+        );
 
-        (articles, config.image_timeout_seconds)
+        (articles, config.image_timeout_seconds, cover_text)
     };
 
     if articles.is_empty() {
@@ -149,6 +156,7 @@ async fn run_read_it_later_generation(
         articles,
         crate::util::EPUB_OUTPUT_DIR,
         image_timeout,
+        cover_text,
     )
     .await?;
     info!("Read It Later generation completed: {}", filename);
@@ -168,6 +176,19 @@ async fn run_read_it_later_generation(
 
     email::check_and_send_email(db, &filename, override_to_email.as_deref()).await?;
     Ok(())
+}
+
+fn schedule_category_context(conn: &Connection, category_ids: &[i64]) -> Result<String> {
+    if category_ids.is_empty() {
+        return Ok("All categories".to_string());
+    }
+
+    let names = category_db::get_category_names_by_ids(conn, category_ids)?;
+    if names.is_empty() {
+        Ok("All categories".to_string())
+    } else {
+        Ok(names.join(", "))
+    }
 }
 
 pub async fn cleanup_old_files() -> Result<()> {

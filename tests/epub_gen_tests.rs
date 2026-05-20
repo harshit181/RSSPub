@@ -1,6 +1,6 @@
 use chrono::{DateTime, TimeZone, Utc};
 use rsspub::feed::{Article, ArticleSource};
-use rsspub::epub_gen::generate_epub_data;
+use rsspub::epub_gen::{generate_epub_data, CoverTextConfig};
 use std::fs::File;
 use std::io::{Cursor, Read};
 use tempfile::NamedTempFile;
@@ -54,7 +54,7 @@ async fn generate_epub_to_vec(articles: &[Article]) -> Vec<u8> {
     let temp_file = NamedTempFile::new().expect("Failed to create temp file");
     let file = File::create(temp_file.path()).expect("Failed to create file");
     
-    generate_epub_data(articles, file, 30)
+    generate_epub_data(articles, file, 30, CoverTextConfig::default())
         .await
         .expect("Failed to generate EPUB");
     
@@ -144,7 +144,7 @@ async fn test_generate_epub_empty_articles() {
     let temp_file = NamedTempFile::new().expect("Failed to create temp file");
     let file = File::create(temp_file.path()).expect("Failed to create file");
     
-    let result = generate_epub_data(&articles, file, 30).await;
+    let result = generate_epub_data(&articles, file, 30, CoverTextConfig::default()).await;
     
     // Should succeed even with empty articles (creates just the TOC)
     assert!(result.is_ok(), "EPUB generation should succeed with empty articles");
@@ -476,7 +476,7 @@ async fn test_empty_title() {
     let temp_file = NamedTempFile::new().expect("Failed to create temp file");
     let file = File::create(temp_file.path()).expect("Failed to create file");
     
-    let result = generate_epub_data(&articles, file, 30).await;
+    let result = generate_epub_data(&articles, file, 30, CoverTextConfig::default()).await;
     
     assert!(result.is_ok(), "Should handle empty title");
 }

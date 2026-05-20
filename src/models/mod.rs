@@ -182,13 +182,124 @@ pub struct GeneralConfig {
     #[serde(default = "default_timeout")]
     pub image_timeout_seconds: i32,
     #[serde(default)]
-    pub add_date_in_cover: bool,
-    #[serde(default = "default_cover_date_color")]
-    pub cover_date_color: String,
+    pub cover_text_enabled: bool,
+    #[serde(default = "default_cover_text_color")]
+    pub cover_text_color: CoverTextColor,
+    #[serde(default = "default_cover_text_position")]
+    pub cover_text_position: CoverTextPosition,
+    #[serde(default = "default_cover_text_size")]
+    pub cover_text_size: CoverTextSize,
 }
 
-fn default_cover_date_color() -> String {
-    "white".to_string()
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum CoverTextColor {
+    White,
+    Black,
+}
+
+impl Default for CoverTextColor {
+    fn default() -> Self {
+        Self::White
+    }
+}
+
+impl CoverTextColor {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::White => "white",
+            Self::Black => "black",
+        }
+    }
+
+    pub fn from_db(value: &str) -> Self {
+        match value {
+            "black" => Self::Black,
+            _ => Self::White,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum CoverTextPosition {
+    TopLeft,
+    TopRight,
+    Center,
+    BottomLeft,
+    BottomRight,
+}
+
+impl Default for CoverTextPosition {
+    fn default() -> Self {
+        Self::BottomRight
+    }
+}
+
+impl CoverTextPosition {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::TopLeft => "top-left",
+            Self::TopRight => "top-right",
+            Self::Center => "center",
+            Self::BottomLeft => "bottom-left",
+            Self::BottomRight => "bottom-right",
+        }
+    }
+
+    pub fn from_db(value: &str) -> Self {
+        match value {
+            "top-left" => Self::TopLeft,
+            "top-right" => Self::TopRight,
+            "center" => Self::Center,
+            "bottom-left" => Self::BottomLeft,
+            _ => Self::BottomRight,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum CoverTextSize {
+    Small,
+    Medium,
+    Large,
+}
+
+impl Default for CoverTextSize {
+    fn default() -> Self {
+        Self::Small
+    }
+}
+
+impl CoverTextSize {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Small => "small",
+            Self::Medium => "medium",
+            Self::Large => "large",
+        }
+    }
+
+    pub fn from_db(value: &str) -> Self {
+        match value {
+            "medium" => Self::Medium,
+            "large" => Self::Large,
+            _ => Self::Small,
+        }
+    }
+}
+
+fn default_cover_text_color() -> CoverTextColor {
+    CoverTextColor::default()
+}
+
+fn default_cover_text_position() -> CoverTextPosition {
+    CoverTextPosition::default()
+}
+
+fn default_cover_text_size() -> CoverTextSize {
+    CoverTextSize::default()
 }
 
 fn default_timeout() -> i32 {
