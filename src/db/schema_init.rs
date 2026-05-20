@@ -107,8 +107,10 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
             id INTEGER PRIMARY KEY CHECK (id = 1),
             fetch_since_hours INTEGER NOT NULL DEFAULT 24,
             image_timeout_seconds INTEGER NOT NULL DEFAULT 45,
-            add_date_in_cover BOOLEAN NOT NULL DEFAULT 0,
-            cover_date_color TEXT NOT NULL DEFAULT 'white'
+            cover_text_enabled BOOLEAN NOT NULL DEFAULT 0,
+            cover_text_color TEXT NOT NULL DEFAULT 'white',
+            cover_text_position TEXT NOT NULL DEFAULT 'bottom-right',
+            cover_text_size TEXT NOT NULL DEFAULT 'small'
         )",
         [],
     )?;
@@ -140,7 +142,7 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
     migration::migrate_schedule_email_override(&conn)?;
     migration::migrate_schedule_fetch_since_hours_override(&conn)?;
     migration::migrate_schedule_categories(&conn)?;
-    migration::migrate_general_config_cover_date(&conn)?;
+    migration::migrate_general_config_cover_text(&conn)?;
     migration::migrate_email_config_smtp_username(&conn)?;
     Ok(conn)
 }

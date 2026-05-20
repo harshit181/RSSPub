@@ -37,6 +37,17 @@ pub fn get_categories(conn: &Connection) -> rusqlite::Result<Vec<Category>> {
     Ok(cats)
 }
 
+pub fn get_category_names_by_ids(conn: &Connection, ids: &[i64]) -> rusqlite::Result<Vec<String>> {
+    let mut names = Vec::new();
+    let mut stmt = conn.prepare("SELECT name FROM categories WHERE id = ?1")?;
+    for id in ids {
+        if let Ok(name) = stmt.query_row(params![id], |row| row.get(0)) {
+            names.push(name);
+        }
+    }
+    Ok(names)
+}
+
 pub fn reorder_categories(conn: &Connection, positions: &Vec<CategoryPosition>) -> rusqlite::Result<()> {
     let mut stmt = conn.prepare("UPDATE categories SET position = ?1 WHERE id = ?2")?;
     for x in positions {

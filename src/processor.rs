@@ -1,4 +1,5 @@
-use crate::models::{Feed, ReadItLaterArticle};
+use crate::epub_gen::CoverTextConfig;
+use crate::models::{Feed, GeneralConfig, ReadItLaterArticle};
 use crate::{epub_gen, feed};
 use anyhow::Result;
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
@@ -11,21 +12,25 @@ use tracing::{info, warn};
 use crate::feed::{Article, ArticleSource};
 use crate::util::content_extractors;
 
+pub const READ_IT_LATER_COVER_TEXT_CONTEXT: &str = "Read it later";
+
 pub async fn generate_epub(
     feeds: Vec<Feed>,
     _db: &Arc<Mutex<Connection>>,
     output_path: &str,
     fetch_since_hours_override: Option<i32>,
+    cover_text_context: Option<String>,
 ) -> Result<()> {
     info!("Fetching {} feeds...", feeds.len());
 
     let (fetched_feeds, errors) = feed::fetch_feeds(&feeds).await;
 
-    let (since, image_timeout) = {
+    let (since, image_timeout, cover_text) = {
         let conn = _db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
         let config = crate::db::get_general_config(&conn)?;
         let fetch_since_hours = fetch_since_hours_override.unwrap_or(config.fetch_since_hours);
-        (Utc::now() - ChronoDuration::hours(fetch_since_hours as i64), config.image_timeout_seconds)
+        let cover_text = cover_text_config_from_general_config(&config, cover_text_context);
+        (Utc::now() - ChronoDuration::hours(fetch_since_hours as i64), config.image_timeout_seconds, cover_text)
     };
     info!("Filtering items since: {}", since);
     let articles = feed::filter_items(fetched_feeds, errors, since).await;
@@ -34,17 +39,17 @@ pub async fn generate_epub(
         return Err(anyhow::anyhow!("No articles found in the last 24 hours."));
     }
 
-    generate_epub_from_articles(output_path, &articles, image_timeout).await?;
+    generate_epub_from_articles(output_path, &articles, image_timeout, cover_text).await?;
 
     Ok(())
 }
 
-async fn generate_epub_from_articles(output_path: &str, articles: &Vec<Article>, image_timeout: i32) -> Result<()> {
+async fn generate_epub_from_articles(output_path: &str, articles: &Vec<Article>, image_timeout: i32, cover_text: CoverTextConfig) -> Result<()> {
     let temp_path = get_temp_file_path(output_path);
     info!("Generating EPUB to temporary file: {:?}", temp_path);
     let file = std::fs::File::create(&temp_path)?;
 
-    match epub_gen::generate_epub_data(&articles, file, image_timeout).await {
+    match epub_gen::generate_epub_data(&articles, file, image_timeout, cover_text).await {
         Ok(_) => {
             info!("EPUB generation successful. moving to {}", output_path);
             std::fs::rename(&temp_path, output_path)?;
@@ -79,18 +84,33 @@ pub async fn generate_and_save(
     db: &Arc<Mutex<Connection>>,
     output_dir: &str,
     fetch_since_hours_override: Option<i32>,
+    cover_text_context: Option<String>,
 ) -> Result<String> {
     let filename = format!("rss_digest_{}.epub", Utc::now().format("%Y%m%d_%H%M%S"));
     let filepath = format!("{}/{}", output_dir, filename);
 
-    generate_epub(feeds, db, &filepath, fetch_since_hours_override).await?;
+    generate_epub(feeds, db, &filepath, fetch_since_hours_override, cover_text_context).await?;
     Ok(filename)
+}
+
+pub fn cover_text_config_from_general_config(
+    config: &GeneralConfig,
+    context: Option<String>,
+) -> CoverTextConfig {
+    CoverTextConfig {
+        enabled: config.cover_text_enabled,
+        color: config.cover_text_color,
+        position: config.cover_text_position,
+        size: config.cover_text_size,
+        context,
+    }
 }
 
 pub async fn generate_read_it_later_epub(
     articles: Vec<ReadItLaterArticle>,
     output_dir: &str,
     image_timeout: i32,
+    cover_text: CoverTextConfig,
 ) -> Result<String> {
     let filename = format!(
         "read_it_later_{}.epub",
@@ -114,7 +134,7 @@ pub async fn generate_read_it_later_epub(
     if fetched_articles.is_empty() {
         return Err(anyhow::anyhow!("No content could be fetched."));
     }
-    generate_epub_from_articles(&filepath, &fetched_articles, image_timeout).await?;
+    generate_epub_from_articles(&filepath, &fetched_articles, image_timeout, cover_text).await?;
     Ok(filename)
 }
 

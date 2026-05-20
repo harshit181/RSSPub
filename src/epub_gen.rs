@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use crate::models::epub_message::EpubPart;
+use crate::models::{CoverTextColor, CoverTextPosition, CoverTextSize};
 use crate::feed::{Article, ArticleSource};
 use crate::image::process_images;
 use crate::templates::{XhtmlWrapper, MasterToc, TocEntry, SourceToc, ArticleEntry, ArticleTemplate, CategoryGroup, CoverTemplate};
@@ -13,7 +14,6 @@ use std::io::{Cursor, Seek, SeekFrom, Write};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use image::{load_from_memory, DynamicImage, GenericImage, GenericImageView, ImageFormat, Rgba};
-use rusqlite::Connection;
 use ab_glyph::{point, Font, FontRef, PxScale, ScaleFont};
 use tokio::task::JoinSet;
 use tracing::info;
@@ -31,10 +31,32 @@ fn epub_language() -> String {
     resolve_epub_language(env::var(EPUB_LANGUAGE_ENV).ok())
 }
 
+#[derive(Debug, Clone)]
+pub struct CoverTextConfig {
+    pub enabled: bool,
+    pub color: CoverTextColor,
+    pub position: CoverTextPosition,
+    pub size: CoverTextSize,
+    pub context: Option<String>,
+}
+
+impl Default for CoverTextConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            color: CoverTextColor::default(),
+            position: CoverTextPosition::default(),
+            size: CoverTextSize::default(),
+            context: None,
+        }
+    }
+}
+
 pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
     articles: &[Article],
     output: W,
     image_timeout_seconds: i32,
+    cover_text: CoverTextConfig,
 ) -> Result<()> {
     use crate::models::epub_message::{CompletionMessage, EpubPart};
     use crate::util;
@@ -112,7 +134,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         if std::path::Path::new(cover_path).exists() {
             match std::fs::read(cover_path) {
                 Ok(cover_data) => {
-                    let cover_data = generate_cover_image(&cover_data);
+                    let cover_data = generate_cover_image(&cover_data, &cover_text);
                     builder
                         .add_cover_image("cover.jpg", cover_data.as_slice(), "image/jpeg")
                         .map_err(|e| anyhow::anyhow!("Failed to add cover image: {}", e))?;
@@ -206,7 +228,7 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         
         category_map.entry(category).or_default().push(entry);
     }
-    
+
     let groups: Vec<CategoryGroup> = category_map.into_iter().map(|(category, sources)| {
         CategoryGroup { category, sources }
     }).collect();
@@ -396,79 +418,127 @@ mod tests {
     }
 }
 
-fn generate_cover_image(cover_data: &Vec<u8>) -> Vec<u8> {
+fn generate_cover_image(cover_data: &Vec<u8>, cover_text: &CoverTextConfig) -> Vec<u8> {
     let mut final_cover_data = cover_data.clone();
 
-    let (add_date_in_cover, cover_date_color) = match Connection::open("./db/rpub.db") {
-        Ok(conn) => match crate::db::get_general_config(&conn) {
-            Ok(cfg) => (cfg.add_date_in_cover, cfg.cover_date_color),
-            Err(_) => (false, "white".to_string()),
-        },
-        Err(_) => (false, "white".to_string()),
-    };
-
-    if add_date_in_cover {
+    if cover_text.enabled {
         if let Ok(mut img) = load_from_memory(&cover_data) {
             let font_data: &[u8] = include_bytes!("../static/Roboto-Regular.ttf");
             if let Ok(font) = FontRef::try_from_slice(font_data) {
-                let height = img.height() as f32 * 0.05; 
+                let size_ratio = match cover_text.size {
+                    CoverTextSize::Medium => 0.08,
+                    CoverTextSize::Large => 0.12,
+                    CoverTextSize::Small => 0.05,
+                };
+                let height = img.height() as f32 * size_ratio;
                 let height = if height < 20.0 { 20.0 } else { height };
                 let scale = PxScale::from(height);
-                let text = Utc::now().format("%Y-%m-%d %H:%M").to_string();
+                let mut lines = Vec::new();
+                if let Some(context) = cover_text.context.as_deref() {
+                    let context = context.trim();
+                    if !context.is_empty() {
+                        lines.push(context.to_string());
+                    }
+                }
+                lines.push(Utc::now().format("%Y-%m-%d %H:%M").to_string());
 
                 let scaled_font = font.as_scaled(scale);
-                let mut text_width = 0.0;
-                let mut last_glyph_id = None;
-                for c in text.chars() {
-                    let id = font.glyph_id(c);
-                    if let Some(last_id) = last_glyph_id {
-                        text_width += scaled_font.kern(last_id, id);
-                    }
-                    text_width += scaled_font.h_advance(id);
-                    last_glyph_id = Some(id);
-                }
-                let text_width = text_width as u32;
+                let line_widths: Vec<u32> = lines
+                    .iter()
+                    .map(|line| measure_text_width(&font, &scaled_font, line))
+                    .collect();
+                let max_text_width = line_widths.iter().copied().max().unwrap_or(0);
 
                 let img_height = img.height();
                 let img_width = img.width();
+                let padding = 20;
+                let line_gap = height * 0.25;
+                let block_height =
+                    height * lines.len() as f32 + line_gap * (lines.len().saturating_sub(1) as f32);
 
-                let x = if img_width > text_width + 20 { img_width - text_width - 20 } else { 10 };
-                let y = if img_height > (height as u32) + 20 { img_height - (height as u32) - 20 } else { 10 };
+                let block_x = match cover_text.position {
+                    CoverTextPosition::TopLeft | CoverTextPosition::BottomLeft => padding,
+                    CoverTextPosition::Center if img_width > max_text_width => {
+                        (img_width - max_text_width) / 2
+                    }
+                    _ if img_width > max_text_width + padding => {
+                        img_width - max_text_width - padding
+                    }
+                    _ => 10,
+                };
+                let alignment_width =
+                    max_text_width.min(img_width.saturating_sub(block_x.saturating_add(padding)));
+                let block_y = match cover_text.position {
+                    CoverTextPosition::TopLeft | CoverTextPosition::TopRight => padding,
+                    CoverTextPosition::Center if img_height > block_height as u32 => {
+                        (img_height - block_height as u32) / 2
+                    }
+                    _ if img_height > (block_height as u32) + padding => {
+                        img_height - (block_height as u32) - padding
+                    }
+                    _ => 10,
+                };
 
-                let mut current_x = x as f32;
-                last_glyph_id = None;
-                
-                for c in text.chars() {
-                    let id = font.glyph_id(c);
-                    if let Some(last_id) = last_glyph_id {
-                        current_x += scaled_font.kern(last_id, id);
+                let is_right_aligned = matches!(
+                    cover_text.position,
+                    CoverTextPosition::TopRight | CoverTextPosition::BottomRight
+                );
+                let is_center_aligned = matches!(cover_text.position, CoverTextPosition::Center);
+                let text_color = match cover_text.color {
+                    CoverTextColor::Black => 0,
+                    CoverTextColor::White => 255,
+                };
+
+                for (line_index, line) in lines.iter().enumerate() {
+                    let line_x = if is_right_aligned && alignment_width > line_widths[line_index] {
+                        block_x + alignment_width - line_widths[line_index]
+                    } else if is_center_aligned && alignment_width > line_widths[line_index] {
+                        block_x + (alignment_width - line_widths[line_index]) / 2
+                    } else {
+                        block_x
+                    };
+                    let line_y = block_y as f32 + (line_index as f32 * (height + line_gap));
+                    let mut current_x = line_x as f32;
+                    let mut last_glyph_id = None;
+
+                    for c in line.chars() {
+                        let id = font.glyph_id(c);
+                        if let Some(last_id) = last_glyph_id {
+                            current_x += scaled_font.kern(last_id, id);
+                        }
+
+                        let glyph = id.with_scale_and_position(
+                            scale,
+                            point(current_x, line_y + scaled_font.ascent()),
+                        );
+
+                        if let Some(outlined) = font.outline_glyph(glyph) {
+                            let bounds = outlined.px_bounds();
+                            outlined.draw(|gx, gy, v| {
+                                let px = bounds.min.x as i32 + gx as i32;
+                                let py = bounds.min.y as i32 + gy as i32;
+
+                                if px >= 0
+                                    && px < img.width() as i32
+                                    && py >= 0
+                                    && py < img.height() as i32
+                                {
+                                    let pixel = img.get_pixel(px as u32, py as u32);
+                                    let blend = |old: u8, new: u8, alpha: f32| -> u8 {
+                                        ((old as f32) * (1.0 - alpha) + (new as f32) * alpha) as u8
+                                    };
+                                    let r = blend(pixel[0], text_color, v);
+                                    let g = blend(pixel[1], text_color, v);
+                                    let b = blend(pixel[2], text_color, v);
+                                    let a = blend(pixel[3], 255, v);
+                                    img.put_pixel(px as u32, py as u32, Rgba([r, g, b, a]));
+                                }
+                            });
+                        }
+
+                        current_x += scaled_font.h_advance(id);
+                        last_glyph_id = Some(id);
                     }
-                    
-                    let glyph = id.with_scale_and_position(scale, point(current_x, y as f32 + scaled_font.ascent()));
-                    
-                    if let Some(outlined) = font.outline_glyph(glyph) {
-                        let bounds = outlined.px_bounds();
-                        outlined.draw(|gx, gy, v| {
-                            let px = bounds.min.x as i32 + gx as i32;
-                            let py = bounds.min.y as i32 + gy as i32;
-                            
-                            if px >= 0 && px < img.width() as i32 && py >= 0 && py < img.height() as i32 {
-                                let pixel = img.get_pixel(px as u32, py as u32);
-                                let blend = |old: u8, new: u8, alpha: f32| -> u8 {
-                                    ((old as f32) * (1.0 - alpha) + (new as f32) * alpha) as u8
-                                };
-                                let text_color = if cover_date_color.to_lowercase() == "black" { 0 } else { 255 };
-                                let r = blend(pixel[0], text_color, v);
-                                let g = blend(pixel[1], text_color, v);
-                                let b = blend(pixel[2], text_color, v);
-                                let a = blend(pixel[3], 255, v);
-                                img.put_pixel(px as u32, py as u32, Rgba([r, g, b, a]));
-                            }
-                        });
-                    }
-                    
-                    current_x += scaled_font.h_advance(id);
-                    last_glyph_id = Some(id);
                 }
 
                 let rgb_img = DynamicImage::ImageRgb8(img.into_rgb8());
@@ -476,12 +546,30 @@ fn generate_cover_image(cover_data: &Vec<u8>) -> Vec<u8> {
                 if rgb_img.write_to(&mut cursor, ImageFormat::Jpeg).is_ok() {
                     final_cover_data = cursor.into_inner();
                 } else {
-                    tracing::warn!("Failed to write date-annotated cover image to JPEG");
+                    tracing::warn!("Failed to write cover text image to JPEG");
                 }
             }
         }
     }
     final_cover_data
+}
+
+fn measure_text_width<F, S>(font: F, scaled_font: &S, text: &str) -> u32
+where
+    F: Font,
+    S: ScaleFont<F>,
+{
+    let mut text_width = 0.0;
+    let mut last_glyph_id = None;
+    for c in text.chars() {
+        let id = font.glyph_id(c);
+        if let Some(last_id) = last_glyph_id {
+            text_width += scaled_font.kern(last_id, id);
+        }
+        text_width += scaled_font.h_advance(id);
+        last_glyph_id = Some(id);
+    }
+    text_width as u32
 }
 
 fn populate_epub_data(builder: &mut EpubBuilder<ZipLibrary>, parts: Vec<EpubPart>) -> Result<()> {

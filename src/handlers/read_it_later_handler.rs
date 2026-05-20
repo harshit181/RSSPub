@@ -108,22 +108,28 @@ pub async fn deliver_read_it_later(
     let db_clone = state.db.clone();
     tokio::spawn(async move {
         info!("Starting background Read It Later EPUB generation...");
-        let image_timeout = {
+        let (image_timeout, cover_text) = {
             match db_clone.lock() {
                 Ok(conn) => match db::get_general_config(&conn) {
-                    Ok(cfg) => cfg.image_timeout_seconds,
+                    Ok(cfg) => {
+                        let cover_text = processor::cover_text_config_from_general_config(
+                            &cfg,
+                            Some(processor::READ_IT_LATER_COVER_TEXT_CONTEXT.to_string()),
+                        );
+                        (cfg.image_timeout_seconds, cover_text)
+                    }
                     Err(e) => {
                         tracing::error!("Failed to fetch config, using default timeout: {}", e);
-                        45
+                        (45, Default::default())
                     }
                 },
                 Err(_) => {
                     tracing::error!("Failed to lock DB for config, using default timeout");
-                    45
+                    (45, Default::default())
                 }
             }
         };
-        match processor::generate_read_it_later_epub(articles, util::EPUB_OUTPUT_DIR, image_timeout)
+        match processor::generate_read_it_later_epub(articles, util::EPUB_OUTPUT_DIR, image_timeout, cover_text)
             .await
         {
             Ok(filename) => {

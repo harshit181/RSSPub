@@ -71,7 +71,7 @@ pub async fn generate_epub_adhoc(
 
     tokio::spawn(async move {
         info!("Starting background EPUB generation...");
-        match processor::generate_and_save(feeds_to_fetch, &db_clone, util::EPUB_OUTPUT_DIR, None).await
+        match processor::generate_and_save(feeds_to_fetch, &db_clone, util::EPUB_OUTPUT_DIR, None, None).await
         {
             Ok(filename) => {
                 info!("Background generation completed successfully: {}", filename);

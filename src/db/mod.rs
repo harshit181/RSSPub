@@ -1,9 +1,7 @@
 use chrono::Utc;
 use rusqlite::{Connection, Result, Transaction, params};
 
-use crate::models::{
-    DomainOverride, EmailConfig, GeneralConfig, ProcessorType, ReadItLaterArticle, Schedule,
-};
+use crate::models::{CoverTextColor, CoverTextPosition, CoverTextSize, DomainOverride, EmailConfig, GeneralConfig, ProcessorType, ReadItLaterArticle, Schedule};
 
 pub mod category_db;
 pub mod feed_db;
@@ -220,13 +218,21 @@ pub fn mark_articles_as_read(conn: &Connection, ids: &[i64]) -> Result<()> {
 }
 
 pub fn get_general_config(conn: &Connection) -> Result<GeneralConfig> {
-    let mut stmt = conn.prepare("SELECT fetch_since_hours, image_timeout_seconds, add_date_in_cover, cover_date_color FROM general_config WHERE id = 1")?;
+    let mut stmt = conn.prepare("SELECT fetch_since_hours, image_timeout_seconds, cover_text_enabled, cover_text_color, cover_text_position, cover_text_size FROM general_config WHERE id = 1")?;
     let mut config_iter = stmt.query_map([], |row| {
+        let cover_text_color = row.get::<_, String>(3).unwrap_or_else(|_| "white".to_string());
+        let cover_text_position = row
+            .get::<_, String>(4)
+            .unwrap_or_else(|_| "bottom-right".to_string());
+        let cover_text_size = row.get::<_, String>(5).unwrap_or_else(|_| "small".to_string());
+
         Ok(GeneralConfig {
             fetch_since_hours: row.get(0)?,
             image_timeout_seconds: row.get(1)?,
-            add_date_in_cover: row.get(2).unwrap_or(false),
-            cover_date_color: row.get(3).unwrap_or_else(|_| "white".to_string()),
+            cover_text_enabled: row.get(2).unwrap_or(false),
+            cover_text_color: CoverTextColor::from_db(&cover_text_color),
+            cover_text_position: CoverTextPosition::from_db(&cover_text_position),
+            cover_text_size: CoverTextSize::from_db(&cover_text_size),
         })
     })?;
 
@@ -236,16 +242,18 @@ pub fn get_general_config(conn: &Connection) -> Result<GeneralConfig> {
         Ok(GeneralConfig {
             fetch_since_hours: 24,
             image_timeout_seconds: 45,
-            add_date_in_cover: false,
-            cover_date_color: "white".to_string(),
+            cover_text_enabled: false,
+            cover_text_color: CoverTextColor::default(),
+            cover_text_position: CoverTextPosition::default(),
+            cover_text_size: CoverTextSize::default(),
         })
     }
 }
 
 pub fn update_general_config(conn: &Connection, config: &GeneralConfig) -> Result<()> {
     conn.execute(
-        "INSERT OR REPLACE INTO general_config (id, fetch_since_hours, image_timeout_seconds, add_date_in_cover, cover_date_color) VALUES (1, ?1, ?2, ?3, ?4)",
-        params![config.fetch_since_hours, config.image_timeout_seconds, config.add_date_in_cover, config.cover_date_color],
+        "INSERT OR REPLACE INTO general_config (id, fetch_since_hours, image_timeout_seconds, cover_text_enabled, cover_text_color, cover_text_position, cover_text_size) VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6)",
+        params![config.fetch_since_hours, config.image_timeout_seconds, config.cover_text_enabled, config.cover_text_color.as_str(), config.cover_text_position.as_str(), config.cover_text_size.as_str()],
     )?;
     Ok(())
 }
@@ -298,8 +306,10 @@ mod tests {
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 fetch_since_hours INTEGER NOT NULL DEFAULT 24,
                 image_timeout_seconds INTEGER NOT NULL DEFAULT 45,
-                add_date_in_cover BOOLEAN NOT NULL DEFAULT 0,
-                cover_date_color TEXT NOT NULL DEFAULT 'white'
+                cover_text_enabled BOOLEAN NOT NULL DEFAULT 0,
+                cover_text_color TEXT NOT NULL DEFAULT 'white',
+                cover_text_position TEXT NOT NULL DEFAULT 'bottom-right',
+                cover_text_size TEXT NOT NULL DEFAULT 'small'
             )",
             [],
         )
@@ -315,8 +325,10 @@ mod tests {
         let new_config = GeneralConfig {
             fetch_since_hours: 48,
             image_timeout_seconds: 60,
-            add_date_in_cover: true,
-            cover_date_color: "black".to_string(),
+            cover_text_enabled: true,
+            cover_text_color: CoverTextColor::Black,
+            cover_text_position: CoverTextPosition::TopLeft,
+            cover_text_size: CoverTextSize::Large,
         };
 
         update_general_config(&conn, &new_config).unwrap();
@@ -324,22 +336,28 @@ mod tests {
         let fetched_config = get_general_config(&conn).unwrap();
         assert_eq!(fetched_config.fetch_since_hours, 48);
         assert_eq!(fetched_config.image_timeout_seconds, 60);
-        assert_eq!(fetched_config.add_date_in_cover, true);
-        assert_eq!(fetched_config.cover_date_color, "black".to_string());
+        assert_eq!(fetched_config.cover_text_enabled, true);
+        assert_eq!(fetched_config.cover_text_color, CoverTextColor::Black);
+        assert_eq!(fetched_config.cover_text_position, CoverTextPosition::TopLeft);
+        assert_eq!(fetched_config.cover_text_size, CoverTextSize::Large);
 
         // Update again
         let updated_config = GeneralConfig {
             fetch_since_hours: 12,
             image_timeout_seconds: 30,
-            add_date_in_cover: false,
-            cover_date_color: "white".to_string(),
+            cover_text_enabled: false,
+            cover_text_color: CoverTextColor::White,
+            cover_text_position: CoverTextPosition::BottomRight,
+            cover_text_size: CoverTextSize::Small,
         };
         update_general_config(&conn, &updated_config).unwrap();
 
         let fetched_config_2 = get_general_config(&conn).unwrap();
         assert_eq!(fetched_config_2.fetch_since_hours, 12);
         assert_eq!(fetched_config_2.image_timeout_seconds, 30);
-        assert_eq!(fetched_config_2.add_date_in_cover, false);
-        assert_eq!(fetched_config_2.cover_date_color, "white".to_string());
+        assert_eq!(fetched_config_2.cover_text_enabled, false);
+        assert_eq!(fetched_config_2.cover_text_color, CoverTextColor::White);
+        assert_eq!(fetched_config_2.cover_text_position, CoverTextPosition::BottomRight);
+        assert_eq!(fetched_config_2.cover_text_size, CoverTextSize::Small);
     }
 }
