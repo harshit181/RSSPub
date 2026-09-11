@@ -918,9 +918,9 @@ dependencies = [
 
 [[package]]
 name = "dom_smoothie"
-version = "0.18.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf8b9b294aabb8010b37c49a07d6f82175152f4927855d534979a38737721875"
+checksum = "90cea52c49b95c4d1011fa998aa1b558f5ade4fabc051827b3c00df0f6112486"
 dependencies = [
  "dom_query",
  "flagset",
