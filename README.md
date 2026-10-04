@@ -42,6 +42,7 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
 ### Prerequisites
 
 - Rust (latest stable)
+- [Deno](https://deno.land/) (for building the web UI)
 - (Optional) `libvips` if using the `mem_opt` feature for optimized image processing.
 
 ### Installation
@@ -52,7 +53,15 @@ It also serves an OPDS feed, making it easy to download the generated EPUBs dire
     cd rsspub
     ```
 
-2.  Run the application:
+2.  Build the UI:
+    ```bash
+    cd ui
+    deno install
+    deno task build
+    cd ..
+    ```
+
+3.  Run the application:
     ```bash
     cargo run
     ```
