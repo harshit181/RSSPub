@@ -35,6 +35,15 @@ jobs:
 
       - name: Cargo build (release)
         run: cargo build --release --verbose --features alternative-alloc
+        env:
+          RUSTFLAGS: "-C target-cpu=x86-64-v2"
+
+      - name: Upload release binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsspub-linux-x86_64
+          path: target/release/rsspub
+          if-no-files-found: error
 
   frontend:
     name: Frontend (Deno / Svelte)

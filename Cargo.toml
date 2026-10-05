@@ -46,3 +46,10 @@ alternative-alloc = ["tikv-jemallocator","tikv-jemalloc-ctl"]
 
 [dev-dependencies]
 zip = "8.6.0"
+
+[profile.release]
+opt-level = 3          # Maximum CPU optimization, loop unrolling, and autovectorization
+lto = "fat"            # Fat link-time optimization across all crate dependencies
+codegen-units = 1      # Maximize LLVM inter-procedural optimizations and reduce binary size
+panic = "abort"        # Strip unwinding landing pads to reduce binary size and memory overhead
+strip = true           # Strip all debug symbols to minimize memory-mapped page footprint
