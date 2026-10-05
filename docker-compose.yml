@@ -7,6 +7,7 @@ services:
       - ${EPUBS_HOST_DIR:-./db}:/app/db
     environment:
       - RUST_LOG=info,html5ever=error
+      - MALLOC_CONF=background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:1000
       - RPUB_USERNAME=${RPUB_USERNAME}
       - RPUB_PASSWORD=${RPUB_PASSWORD}
       - SECURE_OPDS=${SECURE_OPDS}

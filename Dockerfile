@@ -6,6 +6,9 @@ RUN apt-get update && apt-get install -y pkg-config build-essential && rm -rf /v
 
 COPY . .
 
+ARG RUSTFLAGS="-C target-cpu=x86-64-v2"
+ENV RUSTFLAGS=${RUSTFLAGS}
+
 RUN cargo build --release --features alternative-alloc
 
 FROM denoland/deno:alpine as ui-builder
@@ -33,5 +36,6 @@ RUN mkdir -p /app/db
 EXPOSE 3000
 
 ENV RUST_LOG=info,html5ever=error
+ENV MALLOC_CONF="background_thread:true,dirty_decay_ms:1000,muzzy_decay_ms:1000"
 
 CMD ["rsspub"]
