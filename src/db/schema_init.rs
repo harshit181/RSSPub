@@ -110,7 +110,8 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
             cover_text_enabled BOOLEAN NOT NULL DEFAULT 0,
             cover_text_color TEXT NOT NULL DEFAULT 'white',
             cover_text_position TEXT NOT NULL DEFAULT 'bottom-right',
-            cover_text_size TEXT NOT NULL DEFAULT 'small'
+            cover_text_size TEXT NOT NULL DEFAULT 'small',
+            cleanup_after_hours INTEGER NOT NULL DEFAULT 48
         )",
         [],
     )?;
@@ -144,5 +145,6 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
     migration::migrate_schedule_categories(&conn)?;
     migration::migrate_general_config_cover_text(&conn)?;
     migration::migrate_email_config_smtp_username(&conn)?;
+    migration::migrate_general_config_cleanup_after_hours(&conn)?;
     Ok(conn)
 }

@@ -189,6 +189,8 @@ pub struct GeneralConfig {
     pub cover_text_position: CoverTextPosition,
     #[serde(default = "default_cover_text_size")]
     pub cover_text_size: CoverTextSize,
+    #[serde(default = "default_cleanup_after_hours")]
+    pub cleanup_after_hours: i32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -304,6 +306,10 @@ fn default_cover_text_size() -> CoverTextSize {
 
 fn default_timeout() -> i32 {
     45
+}
+
+fn default_cleanup_after_hours() -> i32 {
+    48
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]

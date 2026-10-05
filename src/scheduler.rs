@@ -16,10 +16,12 @@ const READ_IT_LATER: &'static str = "read_it_later";
 pub async fn init_scheduler(db_conn: Arc<Mutex<Connection>>) -> Result<JobScheduler> {
     let sched = JobScheduler::new().await?;
 
-    let cleanup_job = Job::new_async("0 0 * * * *", |_uuid, _l| {
-        Box::pin(async {
+    let cleanup_db = db_conn.clone();
+    let cleanup_job = Job::new_async("0 0 * * * *", move |_uuid, _l| {
+        let db = cleanup_db.clone();
+        Box::pin(async move {
             info!("Running cleanup task...");
-            if let Err(e) = cleanup_old_files().await {
+            if let Err(e) = cleanup_old_files(db).await {
                 error!("Cleanup failed: {}", e);
             }
         })
@@ -191,7 +193,13 @@ fn schedule_category_context(conn: &Connection, category_ids: &[i64]) -> Result<
     }
 }
 
-pub async fn cleanup_old_files() -> Result<()> {
+pub async fn cleanup_old_files(db: Arc<Mutex<Connection>>) -> Result<()> {
+    let cleanup_after_hours = {
+        let conn = db.lock().map_err(|_| anyhow::anyhow!("DB lock failed"))?;
+        let config = crate::db::get_general_config(&conn)?;
+        config.cleanup_after_hours as u64
+    };
+
     let output_dir = crate::util::EPUB_OUTPUT_DIR;
     if !Path::new(output_dir).exists() {
         return Ok(());
@@ -199,11 +207,18 @@ pub async fn cleanup_old_files() -> Result<()> {
 
     let mut entries = tokio::fs::read_dir(output_dir).await?;
     while let Some(entry) = entries.next_entry().await? {
+        let path = entry.path();
+        if path.extension().and_then(|ext| ext.to_str()) != Some("epub") {
+            continue;
+        }
+
         let metadata = entry.metadata().await?;
-        if let Ok(modified) = metadata.modified() {
-            if modified.elapsed().unwrap_or_default() > Duration::from_secs(48 * 3600) {
-                info!("Deleting old file: {:?}", entry.path());
-                tokio::fs::remove_file(entry.path()).await?;
+        if metadata.is_file() {
+            if let Ok(modified) = metadata.modified() {
+                if modified.elapsed().unwrap_or_default() > Duration::from_secs(cleanup_after_hours * 3600) {
+                    info!("Deleting old file: {:?}", path);
+                    tokio::fs::remove_file(path).await?;
+                }
             }
         }
     }
