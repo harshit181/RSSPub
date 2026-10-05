@@ -1,5 +1,5 @@
 use chrono::Utc;
-use rusqlite::{Connection, Result, Transaction, params};
+use rusqlite::{Connection, OptionalExtension, Result, Transaction, params};
 
 use crate::models::{CoverTextColor, CoverTextPosition, CoverTextSize, DomainOverride, EmailConfig, GeneralConfig, ProcessorType, ReadItLaterArticle, Schedule};
 
@@ -218,42 +218,55 @@ pub fn mark_articles_as_read(conn: &Connection, ids: &[i64]) -> Result<()> {
 }
 
 pub fn get_general_config(conn: &Connection) -> Result<GeneralConfig> {
-    let mut stmt = conn.prepare("SELECT fetch_since_hours, image_timeout_seconds, cover_text_enabled, cover_text_color, cover_text_position, cover_text_size FROM general_config WHERE id = 1")?;
-    let mut config_iter = stmt.query_map([], |row| {
-        let cover_text_color = row.get::<_, String>(3).unwrap_or_else(|_| "white".to_string());
-        let cover_text_position = row
-            .get::<_, String>(4)
-            .unwrap_or_else(|_| "bottom-right".to_string());
-        let cover_text_size = row.get::<_, String>(5).unwrap_or_else(|_| "small".to_string());
+    let mut stmt = conn.prepare_cached(
+        "SELECT fetch_since_hours, image_timeout_seconds, cover_text_enabled, cover_text_color, cover_text_position, cover_text_size, cleanup_after_hours FROM general_config WHERE id = 1",
+    )?;
+    let config = stmt
+        .query_row([], |row| {
+            let cover_text_color = row
+                .get_ref(3)
+                .ok()
+                .and_then(|v| v.as_str().ok())
+                .unwrap_or("white");
+            let cover_text_position = row
+                .get_ref(4)
+                .ok()
+                .and_then(|v| v.as_str().ok())
+                .unwrap_or("bottom-right");
+            let cover_text_size = row
+                .get_ref(5)
+                .ok()
+                .and_then(|v| v.as_str().ok())
+                .unwrap_or("small");
 
-        Ok(GeneralConfig {
-            fetch_since_hours: row.get(0)?,
-            image_timeout_seconds: row.get(1)?,
-            cover_text_enabled: row.get(2).unwrap_or(false),
-            cover_text_color: CoverTextColor::from_db(&cover_text_color),
-            cover_text_position: CoverTextPosition::from_db(&cover_text_position),
-            cover_text_size: CoverTextSize::from_db(&cover_text_size),
+            Ok(GeneralConfig {
+                fetch_since_hours: row.get(0)?,
+                image_timeout_seconds: row.get(1)?,
+                cover_text_enabled: row.get(2).unwrap_or(false),
+                cover_text_color: CoverTextColor::from_db(cover_text_color),
+                cover_text_position: CoverTextPosition::from_db(cover_text_position),
+                cover_text_size: CoverTextSize::from_db(cover_text_size),
+                cleanup_after_hours: row.get(6).unwrap_or(48),
+            })
         })
-    })?;
+        .optional()?
+        .unwrap_or_default();
 
-    if let Some(config) = config_iter.next() {
-        Ok(config?)
-    } else {
-        Ok(GeneralConfig {
-            fetch_since_hours: 24,
-            image_timeout_seconds: 45,
-            cover_text_enabled: false,
-            cover_text_color: CoverTextColor::default(),
-            cover_text_position: CoverTextPosition::default(),
-            cover_text_size: CoverTextSize::default(),
-        })
-    }
+    Ok(config)
 }
 
 pub fn update_general_config(conn: &Connection, config: &GeneralConfig) -> Result<()> {
     conn.execute(
-        "INSERT OR REPLACE INTO general_config (id, fetch_since_hours, image_timeout_seconds, cover_text_enabled, cover_text_color, cover_text_position, cover_text_size) VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6)",
-        params![config.fetch_since_hours, config.image_timeout_seconds, config.cover_text_enabled, config.cover_text_color.as_str(), config.cover_text_position.as_str(), config.cover_text_size.as_str()],
+        "INSERT OR REPLACE INTO general_config (id, fetch_since_hours, image_timeout_seconds, cover_text_enabled, cover_text_color, cover_text_position, cover_text_size, cleanup_after_hours) VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![
+            config.fetch_since_hours,
+            config.image_timeout_seconds,
+            config.cover_text_enabled,
+            config.cover_text_color.as_str(),
+            config.cover_text_position.as_str(),
+            config.cover_text_size.as_str(),
+            config.cleanup_after_hours,
+        ],
     )?;
     Ok(())
 }
@@ -309,7 +322,8 @@ mod tests {
                 cover_text_enabled BOOLEAN NOT NULL DEFAULT 0,
                 cover_text_color TEXT NOT NULL DEFAULT 'white',
                 cover_text_position TEXT NOT NULL DEFAULT 'bottom-right',
-                cover_text_size TEXT NOT NULL DEFAULT 'small'
+                cover_text_size TEXT NOT NULL DEFAULT 'small',
+                cleanup_after_hours INTEGER NOT NULL DEFAULT 48
             )",
             [],
         )
@@ -317,11 +331,27 @@ mod tests {
     }
 
     #[test]
+    fn test_get_general_config_default() {
+        let conn = Connection::open_in_memory().unwrap();
+        setup_db(&conn);
+
+        let config = get_general_config(&conn).unwrap();
+        assert_eq!(config, GeneralConfig::default());
+        assert_eq!(config.fetch_since_hours, 24);
+        assert_eq!(config.image_timeout_seconds, 45);
+        assert_eq!(config.cover_text_enabled, false);
+        assert_eq!(config.cover_text_color, CoverTextColor::White);
+        assert_eq!(config.cover_text_position, CoverTextPosition::BottomRight);
+        assert_eq!(config.cover_text_size, CoverTextSize::Small);
+        assert_eq!(config.cleanup_after_hours, 48);
+    }
+
+    #[test]
     fn test_update_general_config() {
         let conn = Connection::open_in_memory().unwrap();
         setup_db(&conn);
 
-        // Initial config check
+      
         let new_config = GeneralConfig {
             fetch_since_hours: 48,
             image_timeout_seconds: 60,
@@ -329,6 +359,7 @@ mod tests {
             cover_text_color: CoverTextColor::Black,
             cover_text_position: CoverTextPosition::TopLeft,
             cover_text_size: CoverTextSize::Large,
+            cleanup_after_hours: 72,
         };
 
         update_general_config(&conn, &new_config).unwrap();
@@ -340,6 +371,7 @@ mod tests {
         assert_eq!(fetched_config.cover_text_color, CoverTextColor::Black);
         assert_eq!(fetched_config.cover_text_position, CoverTextPosition::TopLeft);
         assert_eq!(fetched_config.cover_text_size, CoverTextSize::Large);
+        assert_eq!(fetched_config.cleanup_after_hours, 72);
 
         // Update again
         let updated_config = GeneralConfig {
@@ -349,6 +381,7 @@ mod tests {
             cover_text_color: CoverTextColor::White,
             cover_text_position: CoverTextPosition::BottomRight,
             cover_text_size: CoverTextSize::Small,
+            cleanup_after_hours: 24,
         };
         update_general_config(&conn, &updated_config).unwrap();
 
@@ -359,5 +392,6 @@ mod tests {
         assert_eq!(fetched_config_2.cover_text_color, CoverTextColor::White);
         assert_eq!(fetched_config_2.cover_text_position, CoverTextPosition::BottomRight);
         assert_eq!(fetched_config_2.cover_text_size, CoverTextSize::Small);
+        assert_eq!(fetched_config_2.cleanup_after_hours, 24);
     }
 }
