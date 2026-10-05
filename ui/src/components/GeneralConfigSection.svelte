@@ -12,6 +12,7 @@
     let coverTextColor: CoverTextColor = "white";
     let coverTextPosition: CoverTextPosition = "bottom-right";
     let coverTextSize: CoverTextSize = "small";
+    let cleanupAfterHours = 48;
     let loading = false;
     let message = "";
 
@@ -29,6 +30,7 @@
             coverTextColor = config.cover_text_color ?? "white";
             coverTextPosition = config.cover_text_position ?? "bottom-right";
             coverTextSize = config.cover_text_size ?? "small";
+            cleanupAfterHours = config.cleanup_after_hours ?? 48;
         } catch (e: any) {
             message = "Failed to load config: " + e.message;
         } finally {
@@ -47,6 +49,7 @@
                 cover_text_color: coverTextColor,
                 cover_text_position: coverTextPosition,
                 cover_text_size: coverTextSize,
+                cleanup_after_hours: cleanupAfterHours,
             });
             message = "Configuration saved successfully.";
         } catch (e: any) {
@@ -88,6 +91,18 @@
                     type="number"
                     id="image-timeout"
                     bind:value={imageTimeoutSeconds}
+                    min="1"
+                />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="cleanup-after">Delete Generated EPUBs After (hours)</label>
+            <div class="input-group">
+                <input
+                    type="number"
+                    id="cleanup-after"
+                    bind:value={cleanupAfterHours}
                     min="1"
                 />
             </div>

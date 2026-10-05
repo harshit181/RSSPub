@@ -227,3 +227,14 @@ pub fn migrate_email_config_smtp_username(conn: &Connection) -> Result<(), Error
 
     Ok(())
 }
+
+pub fn migrate_general_config_cleanup_after_hours(conn: &Connection) -> Result<(), Error> {
+    if !has_column(conn, "general_config", "cleanup_after_hours") {
+        conn.execute(
+            "ALTER TABLE general_config ADD COLUMN cleanup_after_hours INTEGER NOT NULL DEFAULT 48",
+            [],
+        )?;
+    }
+
+    Ok(())
+}

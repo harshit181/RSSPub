@@ -56,7 +56,7 @@ async fn main() {
     tokio::fs::create_dir_all(util::EPUB_OUTPUT_DIR).await.unwrap();
 
     info!("Running startup cleanup...");
-    if let Err(e) = scheduler::cleanup_old_files().await {
+    if let Err(e) = scheduler::cleanup_old_files(db_mutex.clone()).await {
         tracing::error!("Startup cleanup failed: {}", e);
     }
 
