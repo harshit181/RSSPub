@@ -176,7 +176,7 @@ pub struct UpdateReadItLaterStatusRequest {
     pub read: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct GeneralConfig {
     pub fetch_since_hours: i32,
     #[serde(default = "default_timeout")]
@@ -191,6 +191,20 @@ pub struct GeneralConfig {
     pub cover_text_size: CoverTextSize,
     #[serde(default = "default_cleanup_after_hours")]
     pub cleanup_after_hours: i32,
+}
+
+impl Default for GeneralConfig {
+    fn default() -> Self {
+        Self {
+            fetch_since_hours: 24,
+            image_timeout_seconds: default_timeout(),
+            cover_text_enabled: false,
+            cover_text_color: default_cover_text_color(),
+            cover_text_position: default_cover_text_position(),
+            cover_text_size: default_cover_text_size(),
+            cleanup_after_hours: default_cleanup_after_hours(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
