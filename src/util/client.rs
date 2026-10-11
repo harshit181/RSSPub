@@ -5,7 +5,7 @@ use std::time::Duration;
 use crate::models::GeneralConfig;
 
 pub const DEFAULT_USER_AGENT: &str =
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+    "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0";
 
 pub static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| build_client(None));
 
