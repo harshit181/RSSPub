@@ -37,7 +37,7 @@ pub fn update_feed(
 pub fn get_feeds(conn: &Connection) -> rusqlite::Result<Vec<Feed>> {
     let mut stmt = conn.prepare(
         "SELECT f.id, f.url, f.name, f.concurrency_limit, f.position, fp.processor, fp.custom_config,
-                fc.category_id, c.name
+                fc.category_id, CASE WHEN c.name IS NOT NULL THEN (c.position + 1) || '.' || c.name ELSE NULL END
          FROM feeds f
          LEFT JOIN feed_processor fp ON f.id = fp.feed_id
          LEFT JOIN feed_category fc ON f.id = fc.feed_id
@@ -81,7 +81,7 @@ pub fn get_feeds(conn: &Connection) -> rusqlite::Result<Vec<Feed>> {
 pub fn get_feeds_by_category(conn: &Connection, search_cat_id: i64) -> rusqlite::Result<Vec<Feed>> {
     let mut stmt = conn.prepare(
         "SELECT f.id, f.url, f.name, f.concurrency_limit, f.position, fp.processor, fp.custom_config,
-                fc.category_id, c.name
+                fc.category_id, CASE WHEN c.name IS NOT NULL THEN (c.position + 1) || '.' || c.name ELSE NULL END
          FROM feeds f
          LEFT JOIN feed_processor fp ON f.id = fp.feed_id
          JOIN feed_category fc ON f.id = fc.feed_id
@@ -152,4 +152,40 @@ pub fn save_feed_processor(
 pub fn delete_feed_processor(conn: &Connection, feed_id: i64) -> rusqlite::Result<()> {
     conn.execute("DELETE FROM feed_processor WHERE feed_id = ?1", params![feed_id])?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::category_db;
+    use crate::db::schema_init;
+
+    #[test]
+    fn test_get_feeds_appends_category_order() {
+        let conn = schema_init::init_db(":memory:").unwrap();
+
+        let cat1_id = category_db::add_category(&conn, "cat1").unwrap();
+        let cat2_id = category_db::add_category(&conn, "cat2").unwrap();
+
+        let feed1_id = add_feed(&conn, "https://example.com/feed1", Some("Feed 1"), 0).unwrap();
+        let feed2_id = add_feed(&conn, "https://example.com/feed2", Some("Feed 2"), 0).unwrap();
+        let _feed3_id = add_feed(&conn, "https://example.com/feed3", Some("Feed 3"), 0).unwrap();
+
+        category_db::update_feed_category(&conn, feed1_id, Some(cat1_id)).unwrap();
+        category_db::update_feed_category(&conn, feed2_id, Some(cat2_id)).unwrap();
+
+        let feeds = get_feeds(&conn).unwrap();
+        assert_eq!(feeds.len(), 3);
+        assert_eq!(feeds[0].category.as_deref(), Some("1.cat1"));
+        assert_eq!(feeds[1].category.as_deref(), Some("2.cat2"));
+        assert_eq!(feeds[2].category, None);
+
+        let feeds_cat1 = get_feeds_by_category(&conn, cat1_id).unwrap();
+        assert_eq!(feeds_cat1.len(), 1);
+        assert_eq!(feeds_cat1[0].category.as_deref(), Some("1.cat1"));
+
+        let feeds_cat2 = get_feeds_by_category(&conn, cat2_id).unwrap();
+        assert_eq!(feeds_cat2.len(), 1);
+        assert_eq!(feeds_cat2[0].category.as_deref(), Some("2.cat2"));
+    }
 }

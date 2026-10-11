@@ -229,9 +229,24 @@ pub async fn generate_epub_data<W: Write + Seek + Send + 'static>(
         category_map.entry(category).or_default().push(entry);
     }
 
-    let groups: Vec<CategoryGroup> = category_map.into_iter().map(|(category, sources)| {
+    let mut groups: Vec<CategoryGroup> = category_map.into_iter().map(|(category, sources)| {
         CategoryGroup { category, sources }
     }).collect();
+
+    groups.sort_by(|a, b| {
+        let parse_order = |cat: &str| -> (u8, u64) {
+            if cat == "Uncategorized" {
+                return (2, 0);
+            }
+            if let Some((num_str, _)) = cat.split_once('.') {
+                if let Ok(num) = num_str.parse::<u64>() {
+                    return (0, num);
+                }
+            }
+            (1, 0)
+        };
+        (parse_order(&a.category), &a.category).cmp(&(parse_order(&b.category), &b.category))
+    });
 
     let master_toc_template = MasterToc { groups };
     let master_toc_html = master_toc_template.render().map_err(|e| anyhow::anyhow!("Failed to render master TOC: {}", e))?;
