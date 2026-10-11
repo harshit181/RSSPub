@@ -1,4 +1,4 @@
-FROM rust:1.92.0-slim-trixie as builder
+FROM rust:1.92.0-slim-trixie AS builder
 
 WORKDIR /usr/src/rsspub
 
@@ -11,15 +11,15 @@ ENV RUSTFLAGS=${RUSTFLAGS}
 
 RUN cargo build --release --features alternative-alloc
 
-FROM denoland/deno:alpine as ui-builder
+FROM oven/bun:alpine AS ui-builder
 
 WORKDIR /project
 
-COPY ui/deno.json ui/deno.lock* ./
-RUN deno install
+COPY ui/package.json ui/bun.lock* ./
+RUN bun install --frozen-lockfile
 
 COPY ui .
-RUN deno task build
+RUN bun run build
 
 FROM debian:trixie-slim
 

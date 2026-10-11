@@ -6,3 +6,4 @@ target/
 .env
 static/epubs/*
 !static/epubs/.gitkeep
+**/node_modules/
