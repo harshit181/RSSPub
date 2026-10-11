@@ -2,9 +2,7 @@ use std::hash::{Hash};
 use chrono::{DateTime, Utc};
 use feed_rs::model::Feed;
 use feed_rs::parser;
-use reqwest::Client;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Semaphore;
 use tracing::{error, info, warn};
 use crate::models::ContentProcessor;
@@ -38,12 +36,7 @@ pub struct FeedWrapper {
 pub async fn fetch_feeds(
     db_feeds: &Vec<crate::models::Feed>,
 ) -> (Vec<FeedWrapper>, Vec<(String, String)>) {
-    let client = Client::builder()
-        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .timeout(Duration::from_secs( 45))
-        .cookie_store(true)
-        .build()
-        .unwrap_or_else(|_| Client::new());
+    let client = crate::util::get_client();
 
     let mut feeds = Vec::new();
     let mut errors = Vec::new();
@@ -105,11 +98,7 @@ pub async fn filter_items(
     since: DateTime<Utc>,
 ) -> Vec<Article> {
     let mut articles = Vec::new();
-    let client = Client::builder()
-        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .cookie_store(true)
-        .build()
-        .unwrap_or_else(|_| Client::new());
+    let client = crate::util::get_client();
     let mut join_set = tokio::task::JoinSet::new();
 
     for (url, error_msg) in errors {

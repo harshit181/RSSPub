@@ -22,11 +22,7 @@ pub async fn process_images(
     static IMG_REGEX: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r#"<img[^>]+src="([^"]+)"[^>]*>"#).unwrap());
 
-    let client = Client::builder()
-        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .timeout(Duration::from_secs(timeout_seconds))
-        .build()
-        .unwrap_or_else(|_| Client::new());
+    let client = crate::util::get_client();
 
     let mut matches = Vec::new();
     //TODO: compare performance regex vs dom_query
@@ -50,7 +46,7 @@ pub async fn process_images(
         let sq = *seq_id;
         tokio::spawn(async move {
             info!("Processing image: {}", src_clone);
-            match download_image(&client, &src_clone).await
+            match download_image(&client, &src_clone, timeout_seconds).await
             {
                     Ok((img_data, format)) => match resize_and_grayscale(img_data, format).await {
                         Ok(processed_data) => {
@@ -107,8 +103,12 @@ async fn send_empty_message_on_error(i: usize, tx_m: Sender<CompletionMessage>, 
     return Err("Failed");
 }
 
-async fn download_image(client: &Client, url: &str) -> Result<(Vec<u8>, ImageFormat)> {
-    let resp = client.get(url).send().await?;
+async fn download_image(client: &Client, url: &str, timeout_seconds: u64) -> Result<(Vec<u8>, ImageFormat)> {
+    let mut req = client.get(url);
+    if timeout_seconds > 0 {
+        req = req.timeout(Duration::from_secs(timeout_seconds));
+    }
+    let resp = req.send().await?;
     //let _content_length = &resp.content_length().unwrap_or(0);
     let bytes = resp.bytes().await?.to_vec();
 

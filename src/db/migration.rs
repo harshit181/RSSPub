@@ -78,7 +78,6 @@ pub fn migrate_schedule_timezone(conn: &Connection) -> Result<(), Error> {
             [],
         )?;
     }
-
     Ok(())
 }
 
@@ -97,7 +96,6 @@ pub fn migrate_schedule_email_override(conn: &Connection) -> Result<(), Error> {
             [],
         )?;
     }
-
     Ok(())
 }
 
@@ -116,24 +114,23 @@ pub fn migrate_schedule_fetch_since_hours_override(conn: &Connection) -> Result<
             [],
         )?;
     }
-
     Ok(())
 }
 
 pub fn migrate_schedule_categories(conn: &Connection) -> Result<(), Error> {
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS schedule_category (
-            schedule_id INTEGER NOT NULL,
-            category_id INTEGER NOT NULL,
-            PRIMARY KEY (schedule_id, category_id),
-            FOREIGN KEY (schedule_id) REFERENCES schedules(id) ON DELETE CASCADE,
-            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+        "CREATE TABLE IF NOT EXISTS schedule_category (\
+            schedule_id INTEGER NOT NULL,\
+            category_id INTEGER NOT NULL,\
+            PRIMARY KEY (schedule_id, category_id),\
+            FOREIGN KEY (schedule_id) REFERENCES schedules(id) ON DELETE CASCADE,\
+            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE\
         )",
         [],
     )?;
 
     conn.execute(
-        "INSERT OR IGNORE INTO schedule_category (schedule_id, category_id)
+        "INSERT OR IGNORE INTO schedule_category (schedule_id, category_id)\
          SELECT id, category_id FROM schedules WHERE category_id IS NOT NULL",
         [],
     )?;
@@ -232,6 +229,17 @@ pub fn migrate_general_config_cleanup_after_hours(conn: &Connection) -> Result<(
     if !has_column(conn, "general_config", "cleanup_after_hours") {
         conn.execute(
             "ALTER TABLE general_config ADD COLUMN cleanup_after_hours INTEGER NOT NULL DEFAULT 48",
+            [],
+        )?;
+    }
+
+    Ok(())
+}
+
+pub fn migrate_general_config_user_agent(conn: &Connection) -> Result<(), Error> {
+    if !has_column(conn, "general_config", "user_agent") {
+        conn.execute(
+            "ALTER TABLE general_config ADD COLUMN user_agent TEXT",
             [],
         )?;
     }

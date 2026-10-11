@@ -139,7 +139,7 @@ pub fn get_email_config(conn: &Connection) -> Result<Option<EmailConfig>> {
 
 pub fn save_email_config(conn: &Connection, config: &EmailConfig) -> Result<()> {
     conn.execute(
-        "INSERT OR REPLACE INTO email_config (id, smtp_host, smtp_port, smtp_password, smtp_username, email_address, to_email, enable_auto_send)
+        "INSERT OR REPLACE INTO email_config (id, smtp_host, smtp_port, smtp_password, smtp_username, email_address, to_email, enable_auto_send)\
          VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![
             config.smtp_host,
@@ -219,7 +219,7 @@ pub fn mark_articles_as_read(conn: &Connection, ids: &[i64]) -> Result<()> {
 
 pub fn get_general_config(conn: &Connection) -> Result<GeneralConfig> {
     let mut stmt = conn.prepare_cached(
-        "SELECT fetch_since_hours, image_timeout_seconds, cover_text_enabled, cover_text_color, cover_text_position, cover_text_size, cleanup_after_hours FROM general_config WHERE id = 1",
+        "SELECT fetch_since_hours, image_timeout_seconds, cover_text_enabled, cover_text_color, cover_text_position, cover_text_size, cleanup_after_hours, user_agent FROM general_config WHERE id = 1",
     )?;
     let config = stmt
         .query_row([], |row| {
@@ -247,6 +247,7 @@ pub fn get_general_config(conn: &Connection) -> Result<GeneralConfig> {
                 cover_text_position: CoverTextPosition::from_db(cover_text_position),
                 cover_text_size: CoverTextSize::from_db(cover_text_size),
                 cleanup_after_hours: row.get(6).unwrap_or(48),
+                user_agent: row.get(7).unwrap_or(None),
             })
         })
         .optional()?
@@ -257,7 +258,7 @@ pub fn get_general_config(conn: &Connection) -> Result<GeneralConfig> {
 
 pub fn update_general_config(conn: &Connection, config: &GeneralConfig) -> Result<()> {
     conn.execute(
-        "INSERT OR REPLACE INTO general_config (id, fetch_since_hours, image_timeout_seconds, cover_text_enabled, cover_text_color, cover_text_position, cover_text_size, cleanup_after_hours) VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        "INSERT OR REPLACE INTO general_config (id, fetch_since_hours, image_timeout_seconds, cover_text_enabled, cover_text_color, cover_text_position, cover_text_size, cleanup_after_hours, user_agent) VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
             config.fetch_since_hours,
             config.image_timeout_seconds,
@@ -266,6 +267,7 @@ pub fn update_general_config(conn: &Connection, config: &GeneralConfig) -> Resul
             config.cover_text_position.as_str(),
             config.cover_text_size.as_str(),
             config.cleanup_after_hours,
+            config.user_agent.as_deref(),
         ],
     )?;
     Ok(())
@@ -323,7 +325,8 @@ mod tests {
                 cover_text_color TEXT NOT NULL DEFAULT 'white',
                 cover_text_position TEXT NOT NULL DEFAULT 'bottom-right',
                 cover_text_size TEXT NOT NULL DEFAULT 'small',
-                cleanup_after_hours INTEGER NOT NULL DEFAULT 48
+                cleanup_after_hours INTEGER NOT NULL DEFAULT 48,
+                user_agent TEXT
             )",
             [],
         )
@@ -344,6 +347,7 @@ mod tests {
         assert_eq!(config.cover_text_position, CoverTextPosition::BottomRight);
         assert_eq!(config.cover_text_size, CoverTextSize::Small);
         assert_eq!(config.cleanup_after_hours, 48);
+        assert_eq!(config.user_agent, None);
     }
 
     #[test]
@@ -360,6 +364,7 @@ mod tests {
             cover_text_position: CoverTextPosition::TopLeft,
             cover_text_size: CoverTextSize::Large,
             cleanup_after_hours: 72,
+            user_agent: Some("MyTestAgent/1.0".to_string()),
         };
 
         update_general_config(&conn, &new_config).unwrap();
@@ -372,6 +377,7 @@ mod tests {
         assert_eq!(fetched_config.cover_text_position, CoverTextPosition::TopLeft);
         assert_eq!(fetched_config.cover_text_size, CoverTextSize::Large);
         assert_eq!(fetched_config.cleanup_after_hours, 72);
+        assert_eq!(fetched_config.user_agent, Some("MyTestAgent/1.0".to_string()));
 
         // Update again
         let updated_config = GeneralConfig {
@@ -382,6 +388,7 @@ mod tests {
             cover_text_position: CoverTextPosition::BottomRight,
             cover_text_size: CoverTextSize::Small,
             cleanup_after_hours: 24,
+            user_agent: None,
         };
         update_general_config(&conn, &updated_config).unwrap();
 
@@ -393,5 +400,6 @@ mod tests {
         assert_eq!(fetched_config_2.cover_text_position, CoverTextPosition::BottomRight);
         assert_eq!(fetched_config_2.cover_text_size, CoverTextSize::Small);
         assert_eq!(fetched_config_2.cleanup_after_hours, 24);
+        assert_eq!(fetched_config_2.user_agent, None);
     }
 }

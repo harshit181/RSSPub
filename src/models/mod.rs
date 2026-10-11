@@ -90,6 +90,8 @@ pub struct EmailConfig {
 pub struct AppState {
     pub db: Arc<Mutex<rusqlite::Connection>>,
     pub scheduler: Arc<TokioMutex<JobScheduler>>,
+    #[allow(dead_code)]
+    pub http_client: reqwest::Client,
 }
 
 #[derive(Deserialize)]
@@ -191,6 +193,8 @@ pub struct GeneralConfig {
     pub cover_text_size: CoverTextSize,
     #[serde(default = "default_cleanup_after_hours")]
     pub cleanup_after_hours: i32,
+    #[serde(default)]
+    pub user_agent: Option<String>,
 }
 
 impl Default for GeneralConfig {
@@ -203,6 +207,7 @@ impl Default for GeneralConfig {
             cover_text_position: default_cover_text_position(),
             cover_text_size: default_cover_text_size(),
             cleanup_after_hours: default_cleanup_after_hours(),
+            user_agent: None,
         }
     }
 }

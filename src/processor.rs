@@ -7,7 +7,6 @@ use reqwest::Client;
 use rusqlite::Connection;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tracing::{info, warn};
 use crate::feed::{Article, ArticleSource};
 use crate::util::content_extractors;
@@ -120,12 +119,7 @@ pub async fn generate_read_it_later_epub(
 
     info!("Fetching content for {} Read It Later articles...", articles.len());
 
-    let client = Client::builder()
-        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .timeout(Duration::from_secs(45))
-        .cookie_store(true)
-        .build()
-        .unwrap_or_else(|_| Client::new());
+    let client = crate::util::get_client();
 
     let mut fetched_articles = Vec::new();
 

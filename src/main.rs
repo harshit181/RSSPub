@@ -43,6 +43,9 @@ async fn main() {
         .init();
 
     let conn = schema_init::init_db("./db/rpub.db").expect("Failed to initialize database");
+    if let Ok(config) = db::get_general_config(&conn) {
+        util::client::init_client_from_config(&config);
+    }
     let db_mutex = Arc::new(Mutex::new(conn));
     let sched = scheduler::init_scheduler(db_mutex.clone())
         .await
@@ -51,6 +54,7 @@ async fn main() {
     let state = Arc::new(AppState {
         db: db_mutex.clone(),
         scheduler: Arc::new(TokioMutex::new(sched)),
+        http_client: util::get_client().clone(),
     });
 
     tokio::fs::create_dir_all(util::EPUB_OUTPUT_DIR).await.unwrap();

@@ -2,6 +2,9 @@ use std::sync::LazyLock;
 use regex::Regex;
 use ammonia::Builder;
 pub(crate) mod content_extractors;
+pub mod client;
+
+pub use client::get_client;
 
 pub const EPUB_OUTPUT_DIR: &str = "epubs";
 pub const COVER_LOCATION: &str = "static/cover.jpg";
