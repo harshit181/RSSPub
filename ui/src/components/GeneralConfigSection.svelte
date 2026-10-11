@@ -13,6 +13,7 @@
     let coverTextPosition: CoverTextPosition = "bottom-right";
     let coverTextSize: CoverTextSize = "small";
     let cleanupAfterHours = 48;
+    let userAgent = "";
     let loading = false;
     let message = "";
 
@@ -31,6 +32,7 @@
             coverTextPosition = config.cover_text_position ?? "bottom-right";
             coverTextSize = config.cover_text_size ?? "small";
             cleanupAfterHours = config.cleanup_after_hours ?? 48;
+            userAgent = config.user_agent ?? "";
         } catch (e: any) {
             message = "Failed to load config: " + e.message;
         } finally {
@@ -50,6 +52,7 @@
                 cover_text_position: coverTextPosition,
                 cover_text_size: coverTextSize,
                 cleanup_after_hours: cleanupAfterHours,
+                user_agent: userAgent.trim() ? userAgent.trim() : null,
             });
             message = "Configuration saved successfully.";
         } catch (e: any) {
@@ -104,6 +107,18 @@
                     id="cleanup-after"
                     bind:value={cleanupAfterHours}
                     min="1"
+                />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="user-agent">User Agent</label>
+            <div class="input-group">
+                <input
+                    type="text"
+                    id="user-agent"
+                    bind:value={userAgent}
+                    placeholder="Leave empty for default"
                 />
             </div>
         </div>

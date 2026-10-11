@@ -33,5 +33,7 @@ pub async fn update_general_config(
     db::update_general_config(&db, &payload)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
+    crate::util::client::update_client_from_config(&payload);
+
     Ok(StatusCode::OK)
 }
