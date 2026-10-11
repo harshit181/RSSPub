@@ -215,6 +215,69 @@ async fn test_toc_escaping_special_characters() {
     assert!(master_toc.contains("Source with Tags"), "Should contain source name");
 }
 
+#[tokio::test]
+async fn test_master_toc_category_ordering() {
+    let articles = vec![
+        Article {
+            title: "Art 1".to_string(),
+            link: "https://example.com/art1".to_string(),
+            content: "<p>Content 1</p>".to_string(),
+            pub_date: Utc::now(),
+            article_source: ArticleSource {
+                source: "Source C".to_string(),
+                position: 2,
+                category: Some("10.cat10".to_string()),
+            },
+        },
+        Article {
+            title: "Art 2".to_string(),
+            link: "https://example.com/art2".to_string(),
+            content: "<p>Content 2</p>".to_string(),
+            pub_date: Utc::now(),
+            article_source: ArticleSource {
+                source: "Source A".to_string(),
+                position: 0,
+                category: Some("1.cat1".to_string()),
+            },
+        },
+        Article {
+            title: "Art 3".to_string(),
+            link: "https://example.com/art3".to_string(),
+            content: "<p>Content 3</p>".to_string(),
+            pub_date: Utc::now(),
+            article_source: ArticleSource {
+                source: "Source B".to_string(),
+                position: 1,
+                category: Some("2.cat2".to_string()),
+            },
+        },
+        Article {
+            title: "Art 4".to_string(),
+            link: "https://example.com/art4".to_string(),
+            content: "<p>Content 4</p>".to_string(),
+            pub_date: Utc::now(),
+            article_source: ArticleSource {
+                source: "Source D".to_string(),
+                position: 3,
+                category: None,
+            },
+        },
+    ];
+
+    let epub_data = generate_epub_to_vec(&articles).await;
+    let mut archive = extract_epub(epub_data);
+    let master_toc = read_epub_file(&mut archive, "toc.xhtml").unwrap();
+
+    let pos_cat1 = master_toc.find("1.cat1").unwrap();
+    let pos_cat2 = master_toc.find("2.cat2").unwrap();
+    let pos_cat10 = master_toc.find("10.cat10").unwrap();
+    let pos_uncat = master_toc.find("Uncategorized").unwrap();
+
+    assert!(pos_cat1 < pos_cat2, "1.cat1 should appear before 2.cat2");
+    assert!(pos_cat2 < pos_cat10, "2.cat2 should appear before 10.cat10");
+    assert!(pos_cat10 < pos_uncat, "10.cat10 should appear before Uncategorized");
+}
+
 // ============================================================================
 // Article Content Formatting Tests
 // ============================================================================
