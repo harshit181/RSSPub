@@ -136,16 +136,7 @@ pub fn init_db(path: &str) -> rusqlite::Result<Connection> {
         )",
         [],
     )?;
-
-    migration::migrate_constraint(&conn)?;
-    migration::migrate_position(&conn)?;
-    migration::migrate_feed_schedule(&conn)?;
-    migration::migrate_schedule_timezone(&conn)?;
-    migration::migrate_schedule_email_override(&conn)?;
-    migration::migrate_schedule_fetch_since_hours_override(&conn)?;
-    migration::migrate_schedule_categories(&conn)?;
-    migration::migrate_general_config_cover_text(&conn)?;
-    migration::migrate_email_config_smtp_username(&conn)?;
+    
     migration::migrate_general_config_cleanup_after_hours(&conn)?;
     migration::migrate_general_config_user_agent(&conn)?;
     Ok(conn)
