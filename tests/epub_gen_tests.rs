@@ -71,7 +71,7 @@ fn extract_epub(epub_data: Vec<u8>) -> ZipArchive<Cursor<Vec<u8>>> {
 fn read_epub_file(archive: &mut ZipArchive<Cursor<Vec<u8>>>, filename: &str) -> Option<String> {
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).ok()?;
-        if file.name().ends_with(filename) {
+        if file.name().ok()?.ends_with(filename) {
             let mut contents = String::new();
             file.read_to_string(&mut contents).ok()?;
             return Some(contents);
@@ -451,7 +451,7 @@ async fn test_article_filename_generation() {
     let filenames: Vec<_> = (0..archive.len())
         .filter_map(|i| {
             let file = archive.by_index_raw(i).ok()?;
-            Some(file.name().to_string())
+            Some(file.name().ok()?.to_string())
         })
         .collect();
     
@@ -481,7 +481,7 @@ async fn test_special_characters_in_source_name() {
     let filenames: Vec<_> = (0..archive.len())
         .filter_map(|i| {
             let file = archive.by_index_raw(i).ok()?;
-            Some(file.name().to_string())
+            Some(file.name().ok()?.to_string())
         })
         .collect();
     
@@ -573,7 +573,7 @@ async fn test_epub_contains_required_files() {
     let filenames: Vec<_> = (0..archive.len())
         .filter_map(|i| {
             let file = archive.by_index_raw(i).ok()?;
-            Some(file.name().to_string())
+            Some(file.name().ok()?.to_string())
         })
         .collect();
     
