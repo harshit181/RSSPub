@@ -45,7 +45,7 @@ mem_opt = ["dep:libvips"]
 alternative-alloc = ["tikv-jemallocator","tikv-jemalloc-ctl"]
 
 [dev-dependencies]
-zip = "8.6.0"
+zip = "9.0.1"
 
 [profile.release]
 opt-level = 3          # Maximum CPU optimization, loop unrolling, and autovectorization

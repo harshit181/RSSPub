@@ -9,6 +9,9 @@ on:
       - master
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
@@ -46,7 +49,7 @@ jobs:
           if-no-files-found: error
 
   frontend:
-    name: Frontend (Deno / Svelte)
+    name: Frontend (Bun / Svelte)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -55,16 +58,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          deno-version: v2.x
+          bun-version: latest
 
       - name: Install UI dependencies
-        run: deno install
+        run: bun install --frozen-lockfile
 
       - name: Check UI types
-        run: deno task check
+        run: bun run check
 
       - name: Build UI
-        run: deno task build
+        run: bun run build
