@@ -11,6 +11,7 @@ epub-builder = "0.8.3"
 chrono = { version = "0.4.45", features = ["serde"] }
 chrono-tz = { version = "0.10.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 anyhow = "1.0" # For error handling
 axum = { version = "0.8.8", features = ["multipart"] }
 tower-http = { version = "0.7.0", features = ["fs", "trace", "set-header"] }
